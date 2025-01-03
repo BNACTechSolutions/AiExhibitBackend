@@ -1,0 +1,5 @@
+node_modules
+.vercel
+.env
+uploads
+ai-exhibit-ed49a8ead891.json
