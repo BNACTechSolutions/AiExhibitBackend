@@ -159,8 +159,8 @@ export const loginClient = async (req, res) => {
 
         const client = new ObjectId(user.clientId);
         const userQr = await landingPageModel.findOne({ clientId: client });  // Wait for the promise to resolve
-        const qrUrl = userQr?.qrCode;  // Extract qrCode after the promise resolves
-        const code = userQr.uniqueUrl
+        const qrUrl = userQr?.qrCode || null;  // Extract qrCode after the promise resolves
+        const code = userQr?.uniqueUrl || "";
 
         res.status(200).json({
             message: "Login successful.",
