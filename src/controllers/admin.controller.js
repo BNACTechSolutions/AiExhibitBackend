@@ -29,7 +29,7 @@ export const addAdminUser = async (req, res) => {
         });
 
         await newUser.save();
-        const setupLink = `${process.env.ADMIN_FRONTEND_URL}/setup-password/${email}/${randomPassword}?role=admin`;
+        const setupLink = `${process.env.PANEL_FRONTEND_URL}/admin/setup-password/${email}/${randomPassword}?role=admin`;
         await sendSetupLinkEmail(email, setupLink);
 
         res.status(201).json({ message: "Admin user created"});
