@@ -98,7 +98,7 @@ export const addClient = async (req, res) => {
         const token = jwt.sign({ userId: superAdminUser._id }, process.env.JWT_SECRET, { expiresIn: '2h' });
 
         // Send setup link email to the user
-        const setupLink = `${process.env.CLIENT_FRONTEND_URL}/setup-password/${email}/${randomPassword}?role=client`;
+        const setupLink = `${process.env.PANEL_FRONTEND_URL}/setup-password/${email}/${randomPassword}?role=client`;
         await sendSetupLinkEmail(email, setupLink);
 
         res.status(201).json({ message: "Client added successfully and setup email sent.", client });
