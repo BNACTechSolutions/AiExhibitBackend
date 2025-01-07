@@ -28,7 +28,7 @@ export const setupLandingPage = async (req, res) => {
 
         const uploadResult = await uploadOnCloudinary(displayImage);
         if (!uploadResult || !uploadResult.secure_url) {
-            return res.status(500).json({ message: 'Display image upload failed.' });
+            return res.status(500).json({ message: 'Display image upload failed.'});
         }
         const displayImageUrl = uploadResult.secure_url;
 
