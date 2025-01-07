@@ -59,8 +59,8 @@ export const getClientAds = async (req, res) => {
     const clientAds = clients.map((client, index) => ({
       serialNumber: index + 1,
       clientName: client.name,
-      hasAdvertisement: client.advertisementId ? 'Yes' : 'No',
-      advertisement: client.advertisementId?.adName || 'N/A',
+      hasAdvertisement: client.advertisements.length > 0 ? 'Yes' : 'No',
+      advertisement: client.advertisements.length > 0 ? client.advertisements[0].adName : 'N/A',  // Assuming only one advertisement per client
     }));
 
     res.status(200).json({ clientAds });
@@ -79,14 +79,27 @@ export const allocateAdvertisement = async (req, res) => {
       return res.status(404).json({ message: 'Client not found' });
     }
 
-    // Check if the advertisement exists
-    const advertisement = await Advertisement.findById(advertisementId);
-    if (!advertisement) {
-      return res.status(404).json({ message: 'Advertisement not found' });
+    if (advertisementId) {
+      // Check if the advertisement exists only when an advertisement ID is provided
+      const advertisement = await Advertisement.findById(advertisementId);
+      if (!advertisement) {
+        return res.status(404).json({ message: 'Advertisement not found' });
+      }
+
+      // Check if the client already has an advertisement
+      if (client.advertisements.length > 0) {
+        // Replace the existing advertisement with the new one
+        client.advertisements[0] = advertisement._id;
+      } else {
+        // Add the advertisement if none is assigned yet
+        client.advertisements.push(advertisement._id);
+      }
+    } else {
+      // If advertisementId is null, remove the advertisement
+      client.advertisements = [];
     }
 
-    // Allocate advertisement to the client by adding to the advertisements array
-    client.advertisements.push(advertisement._id);  // Push the advertisement ID to the advertisements array
+    // Save the updated client document
     await client.save();
 
     // Re-fetch the client and populate the advertisements field to get advertisement details

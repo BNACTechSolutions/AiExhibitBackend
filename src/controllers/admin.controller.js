@@ -39,24 +39,23 @@ export const addAdminUser = async (req, res) => {
 };
 
 export const loginAdminUser = async (req, res) => {
-    const { email, password, recaptchaToken } = req.body;
+    const { email, password } = req.body;
 
     try {
-        const recaptchaResponse = await axios.post(
-            `https://www.google.com/recaptcha/api/siteverify?secret=${process.env.RECAPTCHA_SECRET_KEY}&response=${recaptchaToken}`
-        );
+        // const recaptchaResponse = await axios.post(
+        //     `https://www.google.com/recaptcha/api/siteverify?secret=${process.env.RECAPTCHA_SECRET_KEY}&response=${recaptchaToken}`
+        // );
         
-        if (!recaptchaResponse.data.success || recaptchaResponse.data.score < 0.5) {
-            console.log(recaptchaResponse.data)
-            return res.status(400).send({ message: "Failed reCAPTCHA verification" });
-        }
+        // if (!recaptchaResponse.data.success || recaptchaResponse.data.score < 0.5) {
+        //     console.log(recaptchaResponse.data)
+        //     return res.status(400).send({ message: "Failed reCAPTCHA verification" });
+        // }
 
         const user = await AdminUser.findOne({ email });
         if (!user) return res.status(404).json({ message: "User not found" });
 
         const isPasswordCorrect = await bcrypt.compare(password, user.password);
         if (!isPasswordCorrect) {
-            await handleFailedLoginAttempt(ip, email); // Track failed login attempt
             return res.status(400).json({ message: "Invalid credentials" });
         }
 
@@ -204,12 +203,17 @@ export const getAdminProfile = async (req, res) => {
 
 export const getAllClients = async (req, res) => {
     try {
-      const users = await clientUserModel.find({userType: { $in: [0,1] } }).select('-password');
+      const users = await clientUserModel
+        .find({ userType: { $in: [0, 1] } })
+        .select('-password') // Exclude password
+        .populate('clientId', 'name'); // Populate clientId with only the name field from ClientMaster
+  
       res.json(users);
     } catch (error) {
+      console.error('Error fetching users:', error);
       res.status(500).json({ message: 'Failed to fetch users' });
     }
-};
+  };  
 
 export const getActivityLogs = async (req, res) => {
     try {

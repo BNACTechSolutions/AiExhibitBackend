@@ -111,17 +111,17 @@ const generateRandomLink = () => {
 };
 
 export const loginClient = async (req, res) => {
-    const { email, password } = req.body;
+    const { email, password, recaptchaToken } = req.body;
 
     try {
-        // const recaptchaResponse = await axios.post(
-        //     `https://www.google.com/recaptcha/api/siteverify?secret=${process.env.RECAPTCHA_SECRET_KEY}&response=${recaptchaToken}`
-        // );
+        const recaptchaResponse = await axios.post(
+            `https://www.google.com/recaptcha/api/siteverify?secret=${process.env.RECAPTCHA_SECRET_KEY}&response=${recaptchaToken}`
+        );
         
-        // if (!recaptchaResponse.data.success || recaptchaResponse.data.score < 0.5) {
-        //     console.log(recaptchaResponse.data)
-        //     return res.status(400).send({ message: "Failed reCAPTCHA verification" });
-        // }
+        if (!recaptchaResponse.data.success || recaptchaResponse.data.score < 0.5) {
+            console.log(recaptchaResponse.data)
+            return res.status(400).send({ message: "Failed reCAPTCHA verification" });
+        }
 
         // Find the user by email
         const user = await ClientUser.findOne({ email });
