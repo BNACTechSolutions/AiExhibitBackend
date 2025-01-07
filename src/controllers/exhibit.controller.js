@@ -17,6 +17,7 @@ export const addExhibit = async (req, res) => {
         // Handle title image
         const titleImagePath = req.files?.titleImage ? req.files.titleImage[0].path : null;
         const images = req.files?.images ? req.files.images.map(file => file.path) : [];
+        const islVideoPath = req.files?.islVideo ? req.files.islVideo[0].path : null;  // Optional ISL video
 
         if (!titleImagePath) {
             return res.status(400).json({ message: "Title image is required." });
@@ -34,6 +35,15 @@ export const addExhibit = async (req, res) => {
         const titleImageUrl = uploadResult.secure_url;
         const imageUrls = cloudinaryImages.map(result => result.secure_url);
 
+        let islVideoUrl = null;
+        if (islVideoPath) {
+            const islVideoResult = await uploadOnCloudinary(islVideoPath);
+            if (!islVideoResult) {
+                return res.status(500).json({ message: "ISL video upload failed." });
+            }
+            islVideoUrl = islVideoResult.secure_url;  // ISL video URL
+        }
+
         const clientLanguages = await ClientLanguage.findOne({ clientId });
         if (!clientLanguages) {
             return res.status(404).json({ message: "No languages found for the client." });
@@ -45,11 +55,9 @@ export const addExhibit = async (req, res) => {
 
         const translations = await Promise.all(
             activeLanguages.map(async (lang) => {
-                // Perform translation or fallback to original text
                 const translatedTitle = lang !== "english" ? await translateText(title, lang) : title;
                 const translatedDescription = lang !== "english" ? await translateText(description, lang) : description;
         
-                // Ensure inputs are valid for text-to-speech
                 const titleAudio = translatedTitle
                     ? await convertTextToSpeech(translatedTitle, lang)
                     : null;
@@ -59,8 +67,8 @@ export const addExhibit = async (req, res) => {
         
                 return {
                     language: lang,
-                    title: translatedTitle || title, // Fallback to original text
-                    description: translatedDescription || description, // Fallback to original text
+                    title: translatedTitle || title,
+                    description: translatedDescription || description,
                     audioUrls: {
                         title: titleAudio,
                         description: descriptionAudio,
@@ -77,6 +85,7 @@ export const addExhibit = async (req, res) => {
             images: imageUrls,
             clientId,
             translations,
+            islVideo: islVideoUrl,  // Save ISL video URL
         });
 
         await exhibit.save();
@@ -96,7 +105,12 @@ export const getExhibit = async (req, res) => {
             return res.status(404).json({ message: "Exhibit not found." });
         }
 
-        res.status(200).json({ exhibit });
+        res.status(200).json({
+            exhibit: {
+                ...exhibit.toObject(),
+                islVideo: exhibit.islVideo || null,  // Return ISL video URL if available
+            }
+        });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
@@ -157,6 +171,18 @@ export const editExhibit = async (req, res) => {
 
             const imageUrls = cloudinaryImages.map(result => result.secure_url);
             updatedFields.images = imageUrls;
+        }
+
+        // Handle ISL video update (optional)
+        if (req.files?.islVideo && req.files.islVideo.length > 0) {
+            const islVideoPath = req.files.islVideo[0].path;
+            const islVideoResult = await uploadOnCloudinary(islVideoPath);
+
+            if (!islVideoResult) {
+                return res.status(500).json({ message: "ISL video upload failed." });
+            }
+
+            updatedFields.islVideo = islVideoResult.secure_url;
         }
 
         // Process translations

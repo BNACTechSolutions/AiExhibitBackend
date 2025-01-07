@@ -6,6 +6,7 @@ import ClientLanguage from '../models/clientLanguage.model.js';
 import visitorModel from '../models/visitor.model.js';
 import { sendSetupLinkEmail } from '../utils/emailService.js';
 import landingPageModel from '../models/landingPage.model.js';
+import QRScan from '../models/qrScan.model.js';
 import ActivityLog from '../models/activityLog.model.js';
 import { ObjectId } from 'mongodb';
 import axios from "axios";
@@ -43,8 +44,6 @@ export const addClient = async (req, res) => {
             email,
             mobile,
             status,
-            allottedUsers,
-            displayAllotted,
             textSize,
             audio,
             isl,
@@ -113,17 +112,17 @@ const generateRandomLink = () => {
 };
 
 export const loginClient = async (req, res) => {
-    const { email, password, recaptchaToken } = req.body;
+    const { email, password } = req.body;
 
     try {
-        const recaptchaResponse = await axios.post(
-            `https://www.google.com/recaptcha/api/siteverify?secret=${process.env.RECAPTCHA_SECRET_KEY}&response=${recaptchaToken}`
-        );
+        // const recaptchaResponse = await axios.post(
+        //     `https://www.google.com/recaptcha/api/siteverify?secret=${process.env.RECAPTCHA_SECRET_KEY}&response=${recaptchaToken}`
+        // );
         
-        if (!recaptchaResponse.data.success || recaptchaResponse.data.score < 0.5) {
-            console.log(recaptchaResponse.data)
-            return res.status(400).send({ message: "Failed reCAPTCHA verification" });
-        }
+        // if (!recaptchaResponse.data.success || recaptchaResponse.data.score < 0.5) {
+        //     console.log(recaptchaResponse.data)
+        //     return res.status(400).send({ message: "Failed reCAPTCHA verification" });
+        // }
 
         // Find the user by email
         const user = await ClientUser.findOne({ email });
@@ -282,4 +281,22 @@ export const verifyResetCodeAndUpdatePassword = async (req, res) => {
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
+};
+
+// Client API to get their own QR scan data
+export const getClientQRScans = async (req, res) => {
+  try {
+    const clientId = req.user.clientId; // Assuming the client is authenticated and their clientId is available
+
+    const scans = await QRScan.find({ clientId })
+      .populate({
+        path: 'redirectMappingId', // Populate the redirect mapping details for the client's scans
+        select: 'shortUrl redirectUrl', // Only return shortUrl and redirectUrl for the client
+      });
+
+    res.status(200).json({ scans });
+  } catch (error) {
+    console.error('Error fetching client QR scan data:', error);
+    res.status(500).json({ message: 'Internal server error.' });
+  }
 };

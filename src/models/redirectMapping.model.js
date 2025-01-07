@@ -17,5 +17,4 @@ const redirectMappingSchema = new mongoose.Schema({
     },
 });
 
-const RedirectMapping = mongoose.model('RedirectMapping', redirectMappingSchema);
-export default RedirectMapping;
+export default mongoose.model('RedirectMapping', redirectMappingSchema);

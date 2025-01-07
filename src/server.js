@@ -7,7 +7,6 @@ import exhibitRoutes from './routes/exhibit.routes.js';
 import landingRoutes from './routes/landingPage.routes.js'
 import cors from "cors";
 import redirectRoutes from './routes/redirect.routes.js';
-import RedirectMapping from './models/redirectMapping.model.js';
 
 dotenv.config();
 
@@ -36,22 +35,6 @@ const connectDB = async () => {
         process.exit(1);
     }
 };
-
-app.get('/api/redirect/:shortUrl', async (req, res) => {
-    try {
-        const shortUrl = req.params.shortUrl;
-        const mapping = await RedirectMapping.findOne({ shortUrl });
-
-        if (!mapping) {
-            return res.status(404).json({ message: 'Short URL not found' });
-        }
-
-        res.status(200).json({ redirectUrl: mapping.redirectUrl });
-    } catch (error) {
-        console.error('Error during redirection:', error);
-        res.status(500).json({ message: 'Failed to retrieve redirect URL.' });
-    }
-});
 
 app.use('/api/admin', adminRoutes);
 app.use('/api/client', clientRoutes);

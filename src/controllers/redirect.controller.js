@@ -3,20 +3,16 @@ import RedirectMapping from '../models/redirectMapping.model.js';
 export const handleRedirect = async (req, res) => {
     try {
         const shortUrl = req.params.shortUrl;
-
-
-        // Find the mapping for the shortUrl
         const mapping = await RedirectMapping.findOne({ shortUrl });
 
         if (!mapping) {
-            return res.status(404).send("Short URL not found");
+            return res.status(404).json({ message: 'Short URL not found' });
         }
 
-        // Redirect to the mapped URL
-        return res.redirect(mapping.redirectUrl);
+        res.status(200).json({ redirectUrl: mapping.redirectUrl });
     } catch (error) {
-        console.error("Error during redirection:", error);
-        res.status(500).send("Server Error");
+        console.error('Error during redirection:', error);
+        res.status(500).json({ message: 'Failed to retrieve redirect URL.' });
     }
 };
 

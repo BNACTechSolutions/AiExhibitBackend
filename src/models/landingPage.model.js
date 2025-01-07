@@ -1,4 +1,3 @@
-// models/landingPage.model.js
 import mongoose from "mongoose";
 
 const landingPageSchema = new mongoose.Schema({
@@ -6,7 +5,7 @@ const landingPageSchema = new mongoose.Schema({
     displayImage: { type: String, required: true },
     title: { type: String, required: true },
     description: { type: String, required: true },
-    uniqueUrl: {type: String, required: true},
+    uniqueUrl: { type: String, required: true },
     qrCode: { type: String },
     translations: [
         {
@@ -19,7 +18,7 @@ const landingPageSchema = new mongoose.Schema({
             },
         },
     ],
-    
+    islVideo: { type: String, default: null },  // Optional field for ISL video URL
 });
 
 export default mongoose.model("LandingPage", landingPageSchema);

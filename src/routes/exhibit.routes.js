@@ -20,14 +20,15 @@ const upload = multer({ storage }).fields([
     { name: 'titleImage', maxCount: 1 },  // Title image (single upload)
     { name: 'images', maxCount: 10 }  // Multiple images (maximum 10)
 ]);
+const uploadVideo = multer({ storage }).single('islVideo');
 
-router.post('/add', upload, verifyToken,activityLogger, addExhibit);
+router.post('/add', upload, verifyToken,activityLogger, uploadVideo, addExhibit);
 router.get("/all", verifyToken, getAllExhibits);
 router.get("/:code", getExhibit);
 
 // Route to delete an exhibit by code
 router.delete("/:code", verifyToken,activityLogger, deleteExhibit);
-router.put("/:code", verifyToken, upload,activityLogger, editExhibit);
+router.put("/:code", verifyToken, upload,activityLogger,uploadVideo, editExhibit);
 
 
 export default router;

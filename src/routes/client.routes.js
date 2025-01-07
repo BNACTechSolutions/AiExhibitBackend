@@ -1,5 +1,6 @@
 import express from 'express';
-import { addClient, getVisitorData, loginClient, setupPassword, requestPasswordReset, verifyResetCodeAndUpdatePassword } from '../controllers/client.controller.js';
+import { addClient, getVisitorData, loginClient, setupPassword, requestPasswordReset, verifyResetCodeAndUpdatePassword, getClientQRScans } from '../controllers/client.controller.js';
+import { verifyToken } from '../middlewares/auth.middleware.js';
 import { authMiddleware } from '../middlewares/auth.middleware.js';
 import activityLogger from '../middlewares/activityLog.middleware.js';
 
@@ -16,6 +17,7 @@ router.post('/setup-password',activityLogger, setupPassword);
 router.post('/request-password-reset',activityLogger, requestPasswordReset);
 router.post('/verify-reset-code',activityLogger, verifyResetCodeAndUpdatePassword);
 
+router.get('/qr-scans',verifyToken, getClientQRScans);
 router.post('/visitor-data', getVisitorData)
 
 export default router;

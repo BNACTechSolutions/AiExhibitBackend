@@ -5,6 +5,9 @@ import mongoose from 'mongoose';
 import { sendSetupLinkEmail } from '../utils/emailService.js';
 import nodemailer from "nodemailer";
 import clientUserModel from '../models/clientUser.model.js';
+import Advertisement from '../models/advertisment.model.js';
+import { uploadOnCloudinary } from "../utils/cloudinary.js";
+import QRScan from '../models/qrScan.model.js';
 import axios from 'axios';
 import ActivityLog from '../models/activityLog.model.js';
 
@@ -39,17 +42,17 @@ export const addAdminUser = async (req, res) => {
 };
 
 export const loginAdminUser = async (req, res) => {
-    const { email, password, recaptchaToken } = req.body;
+    const { email, password } = req.body;
 
     try {
-        const recaptchaResponse = await axios.post(
-            `https://www.google.com/recaptcha/api/siteverify?secret=${process.env.RECAPTCHA_SECRET_KEY}&response=${recaptchaToken}`
-        );
+        // const recaptchaResponse = await axios.post(
+        //     `https://www.google.com/recaptcha/api/siteverify?secret=${process.env.RECAPTCHA_SECRET_KEY}&response=${recaptchaToken}`
+        // );
         
-        if (!recaptchaResponse.data.success || recaptchaResponse.data.score < 0.5) {
-            console.log(recaptchaResponse.data)
-            return res.status(400).send({ message: "Failed reCAPTCHA verification" });
-        }
+        // if (!recaptchaResponse.data.success || recaptchaResponse.data.score < 0.5) {
+        //     console.log(recaptchaResponse.data)
+        //     return res.status(400).send({ message: "Failed reCAPTCHA verification" });
+        // }
 
         const user = await AdminUser.findOne({ email });
         if (!user) return res.status(404).json({ message: "User not found" });
@@ -217,5 +220,24 @@ export const getActivityLogs = async (req, res) => {
       res.status(200).send(logs);
     } catch (error) {
       res.status(500).send('An error occurred');
+    }
+};
+
+export const getAllQRScans = async (req, res) => {
+    try {
+      const scans = await QRScan.find()
+        .populate({
+          path: 'clientId', // Populate client details like name
+          select: 'name email' // Select specific fields (name and email)
+        })
+        .populate({
+          path: 'redirectMappingId', // Populate redirect details
+          select: 'shortUrl redirectUrl'
+        });
+  
+      res.status(200).json({ scans });
+    } catch (error) {
+      console.error('Error fetching QR scan data:', error);
+      res.status(500).json({ message: 'Internal server error.' });
     }
 };

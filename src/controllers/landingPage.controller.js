@@ -2,6 +2,7 @@
 import LandingPage from "../models/landingPage.model.js";
 import ClientLanguage from '../models/clientLanguage.model.js';
 import ClientMaster from '../models/clientMaster.model.js';
+import Advertisement from "../models/advertisment.model.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { translateText, convertTextToSpeech } from "../utils/googleApiUtils.js";
 import QRCode from 'qrcode';
@@ -12,6 +13,7 @@ export const setupLandingPage = async (req, res) => {
         const { title, description } = req.body;
         const clientId = req.user.clientId;
         const displayImage = req.file ? req.file.path : null;
+        const islVideo = req.file ? req.file.path : null; // ISL video field (uploaded from the frontend)
 
         if (!clientId) {
             return res.status(400).json({ message: 'Client ID is required.' });
@@ -26,16 +28,27 @@ export const setupLandingPage = async (req, res) => {
             return res.status(400).json({ message: 'Display image is required.' });
         }
 
+        // Upload the display image to Cloudinary
         const uploadResult = await uploadOnCloudinary(displayImage);
         if (!uploadResult || !uploadResult.secure_url) {
             return res.status(500).json({ message: 'Display image upload failed.'});
         }
         const displayImageUrl = uploadResult.secure_url;
 
+        // Upload the ISL video to Cloudinary if provided (optional)
+        let islVideoUrl = null;
+        if (req.file && req.file.fieldname === 'islVideo') {  // Check if ISL video is provided
+            const videoUploadResult = await uploadOnCloudinary(islVideo);
+            if (!videoUploadResult || !videoUploadResult.secure_url) {
+                return res.status(500).json({ message: 'ISL video upload failed.' });
+            }
+            islVideoUrl = videoUploadResult.secure_url;  // URL for the ISL video
+        }
+
         const qrURL = `${process.env.PROXY_URL}/${client.link}`;
         const qrCodeDataURL = await QRCode.toDataURL(qrURL);
 
-        const uniqueUrl = `${process.env.PWA_URL}/${client.link}`
+        const uniqueUrl = `${process.env.PWA_URL}/${client.link}`;
         if (!qrCodeDataURL) {
             return res.status(500).json({ message: 'QR code generation failed.' });
         }
@@ -82,6 +95,7 @@ export const setupLandingPage = async (req, res) => {
             description,
             uniqueUrl: client.link,
             qrCode: qrCodeDataURL,
+            islVideo: islVideoUrl,  // Store the ISL video URL if it's available (optional)
             translations,
         });
 
@@ -109,23 +123,37 @@ export const getLandingPage = async (req, res) => {
 
     try {
         // Fetch the client using the unique link
-        const client = await ClientMaster.findOne({ link:id });
+        const client = await ClientMaster.findOne({ link: id });
         if (!client) {
             return res.status(404).json({ message: 'Client not found with the provided link.' });
         }
-        
+
         // Fetch the landing page data linked to the client using uniqueUrl
         const landingPage = await LandingPage.findOne({ uniqueUrl: id });
         if (!landingPage) {
             return res.status(404).json({ message: 'Landing page not found.' });
         }
 
-        // Return the landing page details
+        // Check if any advertisement image should be shown for this client
+        const advertisement = await Advertisement.findOne({
+            clients: { $in: [client._id] },  // Check if this client is in the advertisement's clients array
+            status: 1,  // Only active advertisements
+        });
+
+        // If an advertisement exists, include its image in the landing page response
+        let advertisementImage = null;
+        if (advertisement) {
+            advertisementImage = advertisement.image;  // Get the ad image URL
+        }
+
+        // Return the landing page details along with the advertisement image if it exists
         res.status(200).json({
             title: landingPage.title,
             description: landingPage.description,
-            displayImage: landingPage.displayImage,
+            displayImage: landingPage.displayImage,  // Client's landing page display image
             translations: landingPage.translations,
+            advertisementImage,  // Add the advertisement image if available
+            islVideo: landingPage.islVideo,  // Include ISL video URL if available
         });
     } catch (error) {
         console.error('Error fetching landing page:', error);
@@ -152,6 +180,16 @@ export const editLandingPage = async (req, res) => {
                 return res.status(500).json({ message: "Image upload failed." });
             }
             displayImage = uploadResult.secure_url;
+        }
+
+        // Handle ISL video update if a new file is uploaded
+        let islVideoUrl = landingPage.islVideo;
+        if (req.files?.islVideo) {  // Check if ISL video is uploaded
+            const videoUploadResult = await uploadOnCloudinary(req.files.islVideo[0].path); // assuming `islVideo` is in `req.files`
+            if (!videoUploadResult) {
+                return res.status(500).json({ message: "ISL video upload failed." });
+            }
+            islVideoUrl = videoUploadResult.secure_url;  // URL of the ISL video
         }
 
         // Fetch client languages
@@ -201,6 +239,7 @@ export const editLandingPage = async (req, res) => {
         landingPage.title = title || landingPage.title;
         landingPage.description = description || landingPage.description;
         landingPage.displayImage = displayImage;
+        landingPage.islVideo = islVideoUrl;  // Update ISL video URL if provided
         landingPage.translations = updatedTranslations;
 
         await landingPage.save();
