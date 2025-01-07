@@ -1,6 +1,6 @@
 import express from 'express';
 import multer from 'multer';
-import { addAdminUser, loginAdminUser, requestPasswordReset, verifyResetCodeAndUpdatePassword, setupPassword, editAdminUser, viewAdminUser, getAdminProfile, getAllClients, getActivityLogs, getAllQRScans } from '../controllers/admin.controller.js';
+import { addAdminUser, loginAdminUser, requestPasswordReset, verifyResetCodeAndUpdatePassword, setupPassword, editAdminUser, viewAdminUser, getAdminProfile, getAllClients, getActivityLogs } from '../controllers/admin.controller.js';
 import { getClientAds, allocateAdvertisement, addAdvertisement, addAdvertiser, getAllAdvertisers, getAllAdvertisements } from '../controllers/advertiser.controller.js';
 import { authMiddleware } from '../middlewares/auth.middleware.js';
 import activityLogger from '../middlewares/activityLog.middleware.js';
@@ -43,7 +43,6 @@ router.get('/getClients', authMiddleware([0,1]), getAllClients);
 router.get('/profile', authMiddleware([0,1,2]), getAdminProfile);
 
 router.get('/logs', authMiddleware([0]), getActivityLogs)
-router.get('/qr-scans',authMiddleware([0,1,2]), getAllQRScans);
 
 // Advertisement Routes
 router.post('/add-advertiser', authMiddleware([0,1,2]), addAdvertiser);

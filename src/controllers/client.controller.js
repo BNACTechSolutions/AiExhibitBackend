@@ -6,7 +6,6 @@ import ClientLanguage from '../models/clientLanguage.model.js';
 import visitorModel from '../models/visitor.model.js';
 import { sendSetupLinkEmail } from '../utils/emailService.js';
 import landingPageModel from '../models/landingPage.model.js';
-import QRScan from '../models/qrScan.model.js';
 import ActivityLog from '../models/activityLog.model.js';
 import { ObjectId } from 'mongodb';
 import axios from "axios";
@@ -281,22 +280,4 @@ export const verifyResetCodeAndUpdatePassword = async (req, res) => {
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
-};
-
-// Client API to get their own QR scan data
-export const getClientQRScans = async (req, res) => {
-  try {
-    const clientId = req.user.clientId; // Assuming the client is authenticated and their clientId is available
-
-    const scans = await QRScan.find({ clientId })
-      .populate({
-        path: 'redirectMappingId', // Populate the redirect mapping details for the client's scans
-        select: 'shortUrl redirectUrl', // Only return shortUrl and redirectUrl for the client
-      });
-
-    res.status(200).json({ scans });
-  } catch (error) {
-    console.error('Error fetching client QR scan data:', error);
-    res.status(500).json({ message: 'Internal server error.' });
-  }
 };
