@@ -130,7 +130,7 @@ export const editExhibit = async (req, res) => {
         }
 
         // Handle updates from the request body
-        const { title, description } = req.body;
+        const { title, description, translations } = req.body;
         const updatedFields = {};
 
         if (title) updatedFields.title = title;
@@ -159,7 +159,42 @@ export const editExhibit = async (req, res) => {
             updatedFields.images = imageUrls;
         }
 
-        // Handle translations and audio generation if title or description is updated
+        // Process translations
+        if (translations) {
+            const existingTranslations = exhibit.translations || [];
+            const updatedTranslations = await Promise.all(
+                Object.entries(translations).map(async ([language, { title, description }]) => {
+                    const existingTranslation = existingTranslations.find(t => t.language === language) || {};
+                    const newTitle = title || existingTranslation.title;
+                    const newDescription = description || existingTranslation.description;
+
+                    const titleAudio = title
+                        ? await convertTextToSpeech(title, language)
+                        : existingTranslation.audioUrls?.title;
+
+                    const descriptionAudio = description
+                        ? await convertTextToSpeech(description, language)
+                        : existingTranslation.audioUrls?.description;
+
+                    return {
+                        language,
+                        title: newTitle,
+                        description: newDescription,
+                        audioUrls: {
+                            title: titleAudio,
+                            description: descriptionAudio,
+                        },
+                    };
+                })
+            );
+
+            updatedFields.translations = [
+                ...existingTranslations.filter(t => !translations[t.language]),
+                ...updatedTranslations,
+            ];
+        }
+
+        // Handle automatic translations for title and description if they are updated
         if (title || description) {
             const clientLanguages = await ClientLanguage.findOne({ clientId: exhibit.clientId });
             if (!clientLanguages) {
@@ -170,8 +205,12 @@ export const editExhibit = async (req, res) => {
                 key => clientLanguages[key] === 1 && key !== '_id' && key !== 'clientId'
             );
 
-            const translations = await Promise.all(
+            const autoTranslations = await Promise.all(
                 activeLanguages.map(async (lang) => {
+                    if (translations && translations[lang]) {
+                        return null; // Skip auto-translation for manually updated languages
+                    }
+
                     const translatedTitle = title
                         ? (lang !== "english" ? await translateText(title, lang) : title)
                         : exhibit.translations.find(t => t.language === lang)?.title;
@@ -190,8 +229,8 @@ export const editExhibit = async (req, res) => {
 
                     return {
                         language: lang,
-                        title: translatedTitle || title,
-                        description: translatedDescription || description,
+                        title: translatedTitle,
+                        description: translatedDescription,
                         audioUrls: {
                             title: titleAudio,
                             description: descriptionAudio,
@@ -200,7 +239,10 @@ export const editExhibit = async (req, res) => {
                 })
             );
 
-            updatedFields.translations = translations;
+            updatedFields.translations = [
+                ...(updatedFields.translations || []),
+                ...autoTranslations.filter(t => t), // Remove null values
+            ];
         }
 
         // Apply updates to the exhibit
