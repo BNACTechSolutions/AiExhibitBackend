@@ -5,16 +5,19 @@ dotenv.config();
 
 cloudinary.config({ 
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME, 
-  api_key: "826156558475825", 
+  api_key: process.env.CLOUDINARY_API_KEY8, 
   api_secret: process.env.CLOUDINARY_API_SECRET 
 });
 
 const uploadOnCloudinary = async (localFilePath) => {
+    console.log(process.env.CLOUDINARY_API_SECRET)
     try {
         if (!localFilePath) {
             console.error("No file path provided.");
             return null;
         }
+
+        console.log("Uploading file from path:", localFilePath);
 
         if (!fs.existsSync(localFilePath)) {
             console.error("File does not exist:", localFilePath);
@@ -26,11 +29,14 @@ const uploadOnCloudinary = async (localFilePath) => {
             resource_type: "auto",
         });
 
+        console.log("Cloudinary upload successful:", response);
+
         // Remove the locally saved file after successful upload
         fs.unlinkSync(localFilePath);
         return response;
 
     } catch (error) {
+        console.error("Cloudinary upload error:", error);
         if (fs.existsSync(localFilePath)) {
             fs.unlinkSync(localFilePath); // Clean up the local file
         }
