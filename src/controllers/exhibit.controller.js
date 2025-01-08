@@ -1,5 +1,9 @@
 import Exhibit from "../models/exhibit.model.js";
-import { uploadOnCloudinary } from "../utils/cloudinary.js";  // Assuming Cloudinary for image upload
+import ExhibitLog from '../models/exhibitLog.model.js';
+import clientMasterModel from '../models/clientMaster.model.js';
+import advertisementModel from '../models/advertisment.model.js';
+import LandingPage from '../models/landingPage.model.js';
+import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import ClientLanguage from "../models/clientLanguage.model.js";
 import { convertTextToSpeech, translateText } from "../utils/googleApiUtils.js";
 
@@ -95,26 +99,74 @@ export const addExhibit = async (req, res) => {
     }
 };
 
-// Controller to fetch exhibit by code
 export const getExhibit = async (req, res) => {
     const { code } = req.params;
-
+    const userAgent = req.headers['user-agent'];
+    const ip = req.ip;
+    const userMobile = req.body.mobile || req.query.mobile || 'Unknown';
+  
     try {
-        const exhibit = await Exhibit.findOne({ code });
-        if (!exhibit) {
-            return res.status(404).json({ message: "Exhibit not found." });
-        }
-
-        res.status(200).json({
-            exhibit: {
-                ...exhibit.toObject(),
-                islVideo: exhibit.islVideo || null,  // Return ISL video URL if available
-            }
-        });
+      // 1. Get the Exhibit by Code
+      const exhibit = await Exhibit.findOne({ code });
+      if (!exhibit) {
+        return res.status(404).json({ message: 'Exhibit not found.' });
+      }
+  
+      // 2. Get the Client (owner of the landing page and exhibit)
+      const client = await clientMasterModel.findOne({ _id: exhibit.clientId });
+      if (!client) {
+        return res.status(404).json({ message: 'Client not found.' });
+      }
+  
+      // 3. Get the Landing Page associated with the client (URL)
+      const landingPage = await LandingPage.findOne({
+        clientId: client._id,
+        uniqueUrl: req.originalUrl,
+      });
+  
+      // 4. Get the Advertisement related to the Exhibit or Client
+      const advertisement = await advertisementModel.findOne({
+        'advertisements.exhibitCode': code,
+      });
+  
+      // 5. Detect Device Type from User-Agent string
+      let deviceType = 'Desktop';  // Default
+      if (userAgent.includes('Mobile')) {
+        deviceType = 'Mobile';
+      } else if (userAgent.includes('Tablet')) {
+        deviceType = 'Tablet';
+      }
+  
+      // 6. Log the interaction
+      const logData = new ExhibitLog({
+        serialNumber: Date.now(),  // Generate unique serial number
+        clientName: client.name,
+        exhibitCode: code,
+        dateTime: new Date(),
+        userMobile: userMobile,  // User's mobile number
+        deviceType: deviceType,  // Device type
+        ipAddress: ip,  // User's IP address
+        advertisementId: advertisement ? advertisement._id : null,  // Advertisement ID
+        landingPageId: landingPage ? landingPage._id : null,  // Landing Page ID
+      });
+  
+      // Save the log entry
+      await logData.save();
+  
+      // Return the exhibit details
+      res.status(200).json({
+        exhibit: {
+          ...exhibit.toObject(),
+          islVideo: exhibit.islVideo || null,  // Return ISL video URL if available
+        },
+      });
     } catch (error) {
-        res.status(500).json({ message: error.message });
+      console.error('Error fetching exhibit:', error);
+      res.status(500).json({ message: 'Error fetching exhibit' });
     }
-};
+  };
+  
+
 
 // Controller to delete an exhibit by code
 export const deleteExhibit = async (req, res) => {

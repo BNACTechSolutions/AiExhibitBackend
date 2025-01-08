@@ -197,28 +197,43 @@ export const setupPassword = async (req, res) => {
     }
 };
 
-export const getVisitorData = async(req, res) => {
-    const {name, mobile} = req.body;
-    try {
-        const existingVisitor = await visitorModel.findOne({ name, mobile });
-        if (!/^\d{10}$/.test(mobile)) {
-            return res.status(400).json({ message: "Mobile must be a 10-digit number." });
-        }
+export const getVisitorData = async (req, res) => {
+  const { name, mobile, clientLink } = req.body;
 
-        if(!existingVisitor){
-            const newVisitor = new visitorModel({
-                name,
-                mobile
-            });
-
-            newVisitor.save();
-        }
-
-        res.status(200).json({message: "Visitor data stored successfully"})
-    } catch (error) {
-        res.status(500).json({ message: error.message });
+  try {
+    // Validate the mobile number format (10-digit)
+    if (!/^\d{10}$/.test(mobile)) {
+      return res.status(400).json({ message: "Mobile must be a 10-digit number." });
     }
-}
+
+    // Find the ClientMaster based on the clientLink from the URL
+    const client = await ClientMaster.findOne({ link: clientLink });
+
+    if (!client) {
+      return res.status(400).json({ message: "Client not found for the given link." });
+    }
+
+    // Check if the visitor already exists with the same name and mobile
+    const existingVisitor = await visitorModel.findOne({ name, mobile });
+    
+    if (!existingVisitor) {
+      // If no existing visitor found, create a new visitor and link to the client
+      const newVisitor = new visitorModel({
+        name,
+        mobile,
+        clientId: client._id, // Link to the specific ClientMaster
+      });
+
+      await newVisitor.save(); // Save the new visitor
+    }
+
+    res.status(200).json({ message: "Visitor data stored successfully" });
+
+  } catch (error) {
+    console.error("Error in getVisitorData:", error);
+    res.status(500).json({ message: "Error storing visitor data." });
+  }
+};
 
 const verificationCodes = {};
 

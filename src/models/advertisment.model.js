@@ -9,6 +9,7 @@ const advertisementSchema = new mongoose.Schema({
     ref: 'Advertiser',
     required: true,
   },
+  active: { type: Boolean, default: true }, // New field to track advertisement status
 });
 
 export default mongoose.model('Advertisement', advertisementSchema);

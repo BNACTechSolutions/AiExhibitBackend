@@ -1,7 +1,7 @@
 import express from 'express';
 import multer from 'multer';
 import { addAdminUser, loginAdminUser, requestPasswordReset, verifyResetCodeAndUpdatePassword, setupPassword, editAdminUser, viewAdminUser, getAdminProfile, getAllClients, getActivityLogs } from '../controllers/admin.controller.js';
-import { getClientAds, allocateAdvertisement, addAdvertisement, addAdvertiser, getAllAdvertisers, getAllAdvertisements } from '../controllers/advertiser.controller.js';
+import { getClientAds, allocateAdvertisement, addAdvertisement, addAdvertiser, getAllAdvertisers, getAllAdvertisements, editAdvertiser, editAdvertisement, toggleAdvertiserStatus, toggleAdvertisementStatus } from '../controllers/advertiser.controller.js';
 import { authMiddleware } from '../middlewares/auth.middleware.js';
 import activityLogger from '../middlewares/activityLog.middleware.js';
 
@@ -51,5 +51,9 @@ router.post('/allocate-ad',authMiddleware([0,1,2]), allocateAdvertisement);
 router.get('/getads', authMiddleware([0,1,2]), getClientAds);
 router.get('/advertisers', authMiddleware([0,1,2]), getAllAdvertisers);
 router.get('/advertisements', authMiddleware([0,1,2]), getAllAdvertisements);
+router.put("/advertisers/:id", editAdvertiser);
+router.put("/advertisers/:id/status", toggleAdvertiserStatus);
+router.put("/advertisements/:id", uploadAdImage, editAdvertisement);
+router.put("/advertisements/:id/status", toggleAdvertisementStatus);
 
 export default router;
