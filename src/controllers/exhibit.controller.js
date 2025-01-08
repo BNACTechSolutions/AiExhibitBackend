@@ -12,6 +12,7 @@ const generateCode = () => Math.random().toString(36).substr(2, 6).toUpperCase()
 export const addExhibit = async (req, res) => {
     const { title, description } = req.body;
     const { clientId } = req.user;
+    const islVideo = req.file ? req.file.path : null;
 
     try {
         if (!clientId) {
@@ -89,7 +90,7 @@ export const addExhibit = async (req, res) => {
             images: imageUrls,
             clientId,
             translations,
-            islVideo: islVideoUrl,  // Save ISL video URL
+            islVideo: islVideoUrl,
         });
 
         await exhibit.save();
@@ -103,7 +104,7 @@ export const getExhibit = async (req, res) => {
     const { code } = req.params;
     const userAgent = req.headers['user-agent'];
     const ip = req.ip;
-    const userMobile = req.body.mobile || req.query.mobile || 'Unknown';
+    const userMobile = req.query.mobile || 'Unknown';
   
     try {
       // 1. Get the Exhibit by Code
@@ -125,9 +126,7 @@ export const getExhibit = async (req, res) => {
       });
   
       // 4. Get the Advertisement related to the Exhibit or Client
-      const advertisement = await advertisementModel.findOne({
-        'advertisements.exhibitCode': code,
-      });
+      const advertisement = await advertisementModel.findById(client.advertisements[0]);
   
       // 5. Detect Device Type from User-Agent string
       let deviceType = 'Desktop';  // Default
@@ -146,27 +145,31 @@ export const getExhibit = async (req, res) => {
         userMobile: userMobile,  // User's mobile number
         deviceType: deviceType,  // Device type
         ipAddress: ip,  // User's IP address
-        advertisementId: advertisement ? advertisement._id : null,  // Advertisement ID
-        landingPageId: landingPage ? landingPage._id : null,  // Landing Page ID
+        advertisementId: advertisement ? advertisement.adName : null,  // Advertisement ID
+        clientId: client._id
       });
   
       // Save the log entry
       await logData.save();
+
+      let advertisementImage = null;
+      if(advertisement.active){
+        advertisementImage = advertisement.adImage;
+      }
   
       // Return the exhibit details
       res.status(200).json({
         exhibit: {
           ...exhibit.toObject(),
-          islVideo: exhibit.islVideo || null,  // Return ISL video URL if available
+          islVideo: exhibit.islVideo || null,
         },
+        advertisementImage
       });
     } catch (error) {
       console.error('Error fetching exhibit:', error);
       res.status(500).json({ message: 'Error fetching exhibit' });
     }
-  };
-  
-
+};  
 
 // Controller to delete an exhibit by code
 export const deleteExhibit = async (req, res) => {
@@ -199,6 +202,7 @@ export const editExhibit = async (req, res) => {
         const { title, description, translations } = req.body;
         const updatedFields = {};
 
+        // Handle title and description updates
         if (title) updatedFields.title = title;
         if (description) updatedFields.description = description;
 
@@ -237,7 +241,7 @@ export const editExhibit = async (req, res) => {
             updatedFields.islVideo = islVideoResult.secure_url;
         }
 
-        // Process translations
+        // Process translations update
         if (translations) {
             const existingTranslations = exhibit.translations || [];
             const updatedTranslations = await Promise.all(

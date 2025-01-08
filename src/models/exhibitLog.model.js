@@ -8,8 +8,8 @@ const exhibitLogSchema = new mongoose.Schema({
   userMobile: { type: String, required: true },
   deviceType: { type: String, required: true },
   ipAddress: { type: String, required: true },
-  advertisementId: { type: mongoose.Schema.Types.ObjectId, ref: 'Advertisement' },
-  landingPageId: { type: mongoose.Schema.Types.ObjectId, ref: 'LandingPage' },
+  advertisementId: { type: String, required: true },
+  clientId: { type: mongoose.Schema.Types.ObjectId, ref: 'ClientMaster' }
 });
 
 export default mongoose.model('ExhibitLog', exhibitLogSchema);

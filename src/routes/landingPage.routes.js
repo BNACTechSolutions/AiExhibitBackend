@@ -21,7 +21,7 @@ const uploadVideo = multer({ storage }).single('islVideo');
 
 // Route for setting up the landing page
 router.post('/setup', verifyToken, upload,activityLogger,uploadVideo, setupLandingPage);
-router.put('/edit', verifyToken, upload,activityLogger,uploadVideo, editLandingPage);
+router.put('/edit', verifyToken, upload, activityLogger, uploadVideo, editLandingPage);
 router.get("/:id", getLandingPage);
 
 export default router;

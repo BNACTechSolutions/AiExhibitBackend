@@ -7,6 +7,8 @@ import nodemailer from "nodemailer";
 import clientUserModel from '../models/clientUser.model.js';
 import axios from 'axios';
 import ActivityLog from '../models/activityLog.model.js';
+import exhibitLog from '../models/exhibitLog.model.js';
+import Visitor from '../models/visitor.model.js'
 
 export const addAdminUser = async (req, res) => {
     const { name, mobile, email, user_type } = req.body;
@@ -39,17 +41,17 @@ export const addAdminUser = async (req, res) => {
 };
 
 export const loginAdminUser = async (req, res) => {
-    const { email, password } = req.body;
+    const { email, password, recaptchaToken } = req.body;
 
     try {
-        // const recaptchaResponse = await axios.post(
-        //     `https://www.google.com/recaptcha/api/siteverify?secret=${process.env.RECAPTCHA_SECRET_KEY}&response=${recaptchaToken}`
-        // );
+        const recaptchaResponse = await axios.post(
+            `https://www.google.com/recaptcha/api/siteverify?secret=${process.env.RECAPTCHA_SECRET_KEY}&response=${recaptchaToken}`
+        );
         
-        // if (!recaptchaResponse.data.success || recaptchaResponse.data.score < 0.5) {
-        //     console.log(recaptchaResponse.data)
-        //     return res.status(400).send({ message: "Failed reCAPTCHA verification" });
-        // }
+        if (!recaptchaResponse.data.success || recaptchaResponse.data.score < 0.5) {
+            console.log(recaptchaResponse.data)
+            return res.status(400).send({ message: "Failed reCAPTCHA verification" });
+        }
 
         const user = await AdminUser.findOne({ email });
         if (!user) return res.status(404).json({ message: "User not found" });
@@ -213,7 +215,7 @@ export const getAllClients = async (req, res) => {
       console.error('Error fetching users:', error);
       res.status(500).json({ message: 'Failed to fetch users' });
     }
-  };  
+};  
 
 export const getActivityLogs = async (req, res) => {
     try {
@@ -221,5 +223,24 @@ export const getActivityLogs = async (req, res) => {
       res.status(200).send(logs);
     } catch (error) {
       res.status(500).send('An error occurred');
+    }
+};
+
+export const getExhibitLogs = async (req, res) => {
+    try{
+        const logs = await exhibitLog.find().sort({ timestamp: -1});
+        res.status(200).send(logs);
+    } catch (error){
+        res.status(500).send('An error occurred');
+    }
+}
+
+export const getAllUsers = async (req, res) => {
+    try {
+        const data = await Visitor.find().populate('clientId', 'name'); // Populate clientId and only return the name field
+        res.json(data);
+    } catch (error) {
+        console.error('Error fetching users:', error);
+        res.status(500).json({ message: 'Failed to fetch users' });
     }
 };

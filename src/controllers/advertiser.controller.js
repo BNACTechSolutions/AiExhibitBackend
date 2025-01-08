@@ -56,19 +56,24 @@ export const getClientAds = async (req, res) => {
       .lean();
 
     // Prepare the response with advertisement status
-    const clientAds = clients.map((client, index) => ({
-      serialNumber: index + 1,
-      clientName: client.name,
-      hasAdvertisement: client.advertisements.length > 0 ? 'Yes' : 'No',
-      advertisement: client.advertisements.length > 0 ? client.advertisements[0].adName : 'N/A',  // Assuming only one advertisement per client
-    }));
+    const clientAds = clients.map((client, index) => {
+      // Ensure advertisements is always an array
+      const advertisements = client.advertisements || [];
+
+      return {
+        serialNumber: index + 1,
+        clientName: client.name,
+        hasAdvertisement: advertisements.length > 0 ? 'Yes' : 'No',
+        advertisement: advertisements.length > 0 ? advertisements[0].adName : 'N/A', // Assuming only one advertisement per client
+      };
+    });
 
     res.status(200).json({ clientAds });
   } catch (error) {
     console.error('Error fetching client ads:', error);
     res.status(500).json({ message: 'Error fetching client ads' });
   }
-};
+};  
 
 export const allocateAdvertisement = async (req, res) => {
   try {

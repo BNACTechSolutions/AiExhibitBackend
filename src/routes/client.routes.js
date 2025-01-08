@@ -1,5 +1,5 @@
 import express from 'express';
-import { addClient, getVisitorData, loginClient, setupPassword, requestPasswordReset, verifyResetCodeAndUpdatePassword } from '../controllers/client.controller.js';
+import { addClient, getVisitorData, loginClient, setupPassword, requestPasswordReset, verifyResetCodeAndUpdatePassword, getAllUsersForClient, getExhibitLogsForClient } from '../controllers/client.controller.js';
 import { verifyToken } from '../middlewares/auth.middleware.js';
 import { authMiddleware } from '../middlewares/auth.middleware.js';
 import activityLogger from '../middlewares/activityLog.middleware.js';
@@ -17,6 +17,8 @@ router.post('/setup-password',activityLogger, setupPassword);
 router.post('/request-password-reset',activityLogger, requestPasswordReset);
 router.post('/verify-reset-code',activityLogger, verifyResetCodeAndUpdatePassword);
 
-router.post('/visitor-data', getVisitorData)
+router.post('/visitor-data', getVisitorData);
+router.get('/get-visitor-data', verifyToken, getAllUsersForClient);
+router.get('/get-exhibit-logs', verifyToken, getExhibitLogsForClient);
 
 export default router;

@@ -7,6 +7,8 @@ import visitorModel from '../models/visitor.model.js';
 import { sendSetupLinkEmail } from '../utils/emailService.js';
 import landingPageModel from '../models/landingPage.model.js';
 import ActivityLog from '../models/activityLog.model.js';
+import Visitor from '../models/visitor.model.js';
+import exhibitLogModel from '../models/exhibitLog.model.js';
 import { ObjectId } from 'mongodb';
 import axios from "axios";
 import nodemailer from "nodemailer";
@@ -294,5 +296,49 @@ export const verifyResetCodeAndUpdatePassword = async (req, res) => {
         res.status(200).json({ message: "Password updated successfully" });
     } catch (error) {
         res.status(500).json({ message: error.message });
+    }
+};
+
+export const getAllUsersForClient = async (req, res) => {
+    try {
+        const clientId = req.user.clientId;
+
+        if (!clientId) {
+            return res.status(400).json({ message: 'Client not authenticated' });
+        }
+
+        const data = await Visitor.find({ clientId })
+            .populate('clientId', 'name')  // Populate clientId with only the name field
+            .exec();
+
+        res.json(data);
+    } catch (error) {
+        console.error('Error fetching visitors for client:', error);
+        res.status(500).json({ message: 'Failed to fetch visitors for client' });
+    }
+};
+
+export const getExhibitLogsForClient = async (req, res) => {
+    try {
+        // Assuming clientId is stored in the token or session
+        const clientId = req.user.clientId;  // req.user.clientId should be available after token validation
+
+        if (!clientId) {
+            return res.status(400).json({ message: 'Client not authenticated' });
+        }
+
+        // Fetch logs for the specific client, sorted by timestamp in descending order
+        const logs = await exhibitLogModel.find({ clientId: clientId })
+            .sort({ dateTime: -1 })
+            .exec();
+
+        if (!logs) {
+            return res.status(404).json({ message: 'No logs found for this client' });
+        }
+
+        res.status(200).json(logs);
+    } catch (error) {
+        console.error('Error fetching exhibit logs for client:', error);
+        res.status(500).json({ message: 'An error occurred while fetching the logs' });
     }
 };

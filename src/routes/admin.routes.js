@@ -1,6 +1,6 @@
 import express from 'express';
 import multer from 'multer';
-import { addAdminUser, loginAdminUser, requestPasswordReset, verifyResetCodeAndUpdatePassword, setupPassword, editAdminUser, viewAdminUser, getAdminProfile, getAllClients, getActivityLogs } from '../controllers/admin.controller.js';
+import { addAdminUser, loginAdminUser, requestPasswordReset, verifyResetCodeAndUpdatePassword, setupPassword, editAdminUser, viewAdminUser, getAdminProfile, getAllClients, getActivityLogs, getExhibitLogs, getAllUsers } from '../controllers/admin.controller.js';
 import { getClientAds, allocateAdvertisement, addAdvertisement, addAdvertiser, getAllAdvertisers, getAllAdvertisements, editAdvertiser, editAdvertisement, toggleAdvertiserStatus, toggleAdvertisementStatus } from '../controllers/advertiser.controller.js';
 import { authMiddleware } from '../middlewares/auth.middleware.js';
 import activityLogger from '../middlewares/activityLog.middleware.js';
@@ -39,10 +39,11 @@ router.put('/:id', authMiddleware([0]),activityLogger, editAdminUser);
 // View Admin User Details
 router.get('/', authMiddleware([0,1]), viewAdminUser);
 router.get('/getClients', authMiddleware([0,1]), getAllClients);
-
 router.get('/profile', authMiddleware([0,1,2]), getAdminProfile);
 
-router.get('/logs', authMiddleware([0]), getActivityLogs)
+// Logging Function
+router.get('/logs', authMiddleware([0]), getActivityLogs);
+router.get('/exhibit-logs', authMiddleware([0,1,2]), getExhibitLogs)
 
 // Advertisement Routes
 router.post('/add-advertiser', authMiddleware([0,1,2]), addAdvertiser);
@@ -55,5 +56,8 @@ router.put("/advertisers/:id", editAdvertiser);
 router.put("/advertisers/:id/status", toggleAdvertiserStatus);
 router.put("/advertisements/:id", uploadAdImage, editAdvertisement);
 router.put("/advertisements/:id/status", toggleAdvertisementStatus);
+
+// Visitor Details
+router.get("/get-visitor-data", authMiddleware([0,1,2]), getAllUsers);
 
 export default router;

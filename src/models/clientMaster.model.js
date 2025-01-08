@@ -31,7 +31,7 @@ const clientMasterSchema = new mongoose.Schema({
   advertisements: [
     {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Advertisement', // Linking to the Advertisement model
+      ref: 'Advertisement',
     },
   ],
 });
