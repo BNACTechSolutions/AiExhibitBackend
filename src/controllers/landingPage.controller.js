@@ -189,10 +189,20 @@ export const getLandingPage = async (req, res) => {
 };
 
 export const editLandingPage = async (req, res) => {
-    const { title, description, translations } = req.body;
+    const { title, description } = req.body;
     const { clientId } = req.user;
+    let translations;
 
     try {
+        // Parse translations JSON if provided in form-data
+        if (req.body.translations) {
+            try {
+                translations = JSON.parse(req.body.translations);
+            } catch (error) {
+                return res.status(400).json({ message: "Invalid translations JSON format." });
+            }
+        }
+
         // Fetch the landing page for the client
         const landingPage = await LandingPage.findOne({ clientId });
         if (!landingPage) {
@@ -241,9 +251,9 @@ export const editLandingPage = async (req, res) => {
                         translatedTitle = title || existingTranslation?.title;
                         translatedDescription = description || existingTranslation?.description;
                     } else {
-                        // Translate for other languages
-                        translatedTitle = translations?.[language]?.title || await translateText(title, language) || existingTranslation?.title;
-                        translatedDescription = translations?.[language]?.description || await translateText(description, language) || existingTranslation?.description;
+                        // Update translations from request body or fallback to existing
+                        translatedTitle = translations?.[language]?.title || existingTranslation?.title;
+                        translatedDescription = translations?.[language]?.description || existingTranslation?.description;
                     }
 
                     // Convert text to speech

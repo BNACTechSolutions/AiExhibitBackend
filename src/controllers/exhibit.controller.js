@@ -241,11 +241,21 @@ export const editExhibit = async (req, res) => {
             updatedFields.islVideo = islVideoResult.secure_url;
         }
 
-        // Process translations update
+        // Parse translations JSON if provided in form-data
+        let parsedTranslations = null;
         if (translations) {
+            try {
+                parsedTranslations = JSON.parse(translations); // Convert the translations from JSON string to an object
+            } catch (error) {
+                return res.status(400).json({ message: "Invalid translations JSON format." });
+            }
+        }
+
+        // Process translations update
+        if (parsedTranslations) {
             const existingTranslations = exhibit.translations || [];
             const updatedTranslations = await Promise.all(
-                Object.entries(translations).map(async ([language, { title, description }]) => {
+                Object.entries(parsedTranslations).map(async ([language, { title, description }]) => {
                     const existingTranslation = existingTranslations.find(t => t.language === language) || {};
                     const newTitle = title || existingTranslation.title;
                     const newDescription = description || existingTranslation.description;
@@ -271,7 +281,7 @@ export const editExhibit = async (req, res) => {
             );
 
             updatedFields.translations = [
-                ...existingTranslations.filter(t => !translations[t.language]),
+                ...existingTranslations.filter(t => !parsedTranslations[t.language]),
                 ...updatedTranslations,
             ];
         }
@@ -289,7 +299,7 @@ export const editExhibit = async (req, res) => {
 
             const autoTranslations = await Promise.all(
                 activeLanguages.map(async (lang) => {
-                    if (translations && translations[lang]) {
+                    if (parsedTranslations && parsedTranslations[lang]) {
                         return null; // Skip auto-translation for manually updated languages
                     }
 

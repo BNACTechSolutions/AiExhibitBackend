@@ -16,12 +16,14 @@ const storage = multer.diskStorage({
     }
 });
 
-const upload = multer({ storage }).single('displayImage');
-const uploadVideo = multer({ storage }).single('islVideo');
+const upload = multer({ storage }).fields([
+    { name: 'displayImage', maxCount: 1 }, // For the display image
+    { name: 'islVideo', maxCount: 1 }     // For the ISL video
+]);
 
 // Route for setting up the landing page
-router.post('/setup', verifyToken, upload,activityLogger,uploadVideo, setupLandingPage);
-router.put('/edit', verifyToken, upload, activityLogger, uploadVideo, editLandingPage);
+router.post('/setup', verifyToken, upload,activityLogger, setupLandingPage);
+router.put('/edit', verifyToken, upload, activityLogger, editLandingPage);
 router.get("/:id", getLandingPage);
 
 export default router;
