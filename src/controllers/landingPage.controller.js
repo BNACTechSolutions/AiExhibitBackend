@@ -189,106 +189,153 @@ export const getLandingPage = async (req, res) => {
 };
 
 export const editLandingPage = async (req, res) => {
-    const { title, description } = req.body;
     const { clientId } = req.user;
-    let translations;
 
     try {
+        // Fetch the landing to be updated
+        const landing = await LandingPage.findOne({ clientId });
+        if (!landing) {
+            return res.status(404).json({ message: "Landing not found." });
+        }
+
+        // Handle updates from the request body
+        const { title, description, translations } = req.body;
+        const updatedFields = {};
+
+        // Handle title and description updates
+        if (title) updatedFields.title = title;
+        if (description) updatedFields.description = description;
+
+        // Handle title image update
+        if (req.files?.titleImage && req.files.titleImage.length > 0) {
+            const titleImagePath = req.files.titleImage[0].path;
+            const uploadResult = await uploadOnCloudinary(titleImagePath);
+
+            if (!uploadResult) {
+                return res.status(500).json({ message: "Title image upload failed." });
+            }
+
+            updatedFields.titleImage = uploadResult.secure_url;
+        }
+
+        // Handle ISL video update (optional)
+        if (req.files?.islVideo && req.files.islVideo.length > 0) {
+            const islVideoPath = req.files.islVideo[0].path;
+            const islVideoResult = await uploadOnCloudinary(islVideoPath);
+
+            if (!islVideoResult) {
+                return res.status(500).json({ message: "ISL video upload failed." });
+            }
+
+            updatedFields.islVideo = islVideoResult.secure_url;
+        }
+
         // Parse translations JSON if provided in form-data
-        if (req.body.translations) {
+        let parsedTranslations = null;
+        if (translations) {
             try {
-                translations = JSON.parse(req.body.translations);
+                parsedTranslations = JSON.parse(translations); // Convert the translations from JSON string to an object
             } catch (error) {
                 return res.status(400).json({ message: "Invalid translations JSON format." });
             }
         }
 
-        // Fetch the landing page for the client
-        const landingPage = await LandingPage.findOne({ clientId });
-        if (!landingPage) {
-            return res.status(404).json({ message: "Landing page not found." });
+        // Process translations update
+        if (parsedTranslations) {
+            const existingTranslations = landing.translations || [];
+            const updatedTranslations = await Promise.all(
+                Object.entries(parsedTranslations).map(async ([language, { title, description }]) => {
+                    const existingTranslation = existingTranslations.find(t => t.language === language) || {};
+                    const newTitle = title || existingTranslation.title;
+                    const newDescription = description || existingTranslation.description;
+
+                    const titleAudio = title
+                        ? await convertTextToSpeech(title, language)
+                        : existingTranslation.audioUrls?.title;
+
+                    const descriptionAudio = description
+                        ? await convertTextToSpeech(description, language)
+                        : existingTranslation.audioUrls?.description;
+
+                    return {
+                        language,
+                        title: newTitle,
+                        description: newDescription,
+                        audioUrls: {
+                            title: titleAudio,
+                            description: descriptionAudio,
+                        },
+                    };
+                })
+            );
+
+            updatedFields.translations = [
+                ...existingTranslations.filter(t => !parsedTranslations[t.language]),
+                ...updatedTranslations,
+            ];
         }
 
-        // Handle image upload
-        let displayImage = landingPage.displayImage;
-        if (req.file?.path) {
-            const uploadResult = await uploadOnCloudinary(req.file.path);
-            if (!uploadResult) throw new Error("Image upload failed.");
-            displayImage = uploadResult.secure_url;
+        // Handle automatic translations for title and description if they are updated
+        if (title || description) {
+            const clientLanguages = await ClientLanguage.findOne({ clientId: landing.clientId });
+            if (!clientLanguages) {
+                return res.status(404).json({ message: "No languages found for the client." });
+            }
+
+            const activeLanguages = Object.keys(clientLanguages._doc).filter(
+                key => clientLanguages[key] === 1 && key !== '_id' && key !== 'clientId'
+            );
+
+            const autoTranslations = await Promise.all(
+                activeLanguages.map(async (lang) => {
+                    console.log(parsedTranslations);
+                    if (parsedTranslations && parsedTranslations[lang]) {
+                        return null; // Skip auto-translation for manually updated languages
+                    }
+
+                    const translatedTitle = title
+                        ? (lang !== "english" ? await translateText(title, lang) : title)
+                        : landing.translations.find(t => t.language === lang)?.title;
+
+                    const translatedDescription = description
+                        ? (lang !== "english" ? await translateText(description, lang) : description)
+                        : landing.translations.find(t => t.language === lang)?.description;
+
+                    const titleAudio = translatedTitle
+                        ? await convertTextToSpeech(translatedTitle, lang)
+                        : landing.translations.find(t => t.language === lang)?.audioUrls?.title;
+
+                    const descriptionAudio = translatedDescription
+                        ? await convertTextToSpeech(translatedDescription, lang)
+                        : landing.translations.find(t => t.language === lang)?.audioUrls?.description;
+
+                    return {
+                        language: lang,
+                        title: translatedTitle,
+                        description: translatedDescription,
+                        audioUrls: {
+                            title: titleAudio,
+                            description: descriptionAudio,
+                        },
+                    };
+                })
+            );
+
+            updatedFields.translations = [
+                ...(updatedFields.translations || []),
+                ...autoTranslations.filter(t => t), // Remove null values
+            ];
         }
 
-        // Handle ISL video upload
-        let islVideoUrl = landingPage.islVideo;
-        if (req.files?.islVideo) {
-            const videoUploadResult = await uploadOnCloudinary(req.files.islVideo[0].path);
-            if (!videoUploadResult) throw new Error("ISL video upload failed.");
-            islVideoUrl = videoUploadResult.secure_url;
-        }
-
-        // Fetch client languages
-        const clientLanguages = await ClientLanguage.findOne({ clientId });
-        if (!clientLanguages) {
-            return res.status(404).json({ message: "Languages for the client not found." });
-        }
-
-        const activeLanguages = Object.keys(clientLanguages._doc).filter(
-            key => clientLanguages[key] === 1 && !['_id', 'clientId'].includes(key)
+        // Apply updates to the landing
+        const updatedLanding = await LandingPage.findOneAndUpdate(
+            { clientId },
+            { $set: updatedFields },
+            { new: true }
         );
 
-        // Process translations
-        const updatedTranslations = await Promise.all(
-            activeLanguages.map(async (language) => {
-                const existingTranslation = landingPage.translations?.find(t => t.language === language);
-
-                let translatedTitle = existingTranslation?.title;
-                let translatedDescription = existingTranslation?.description;
-                let titleAudio = existingTranslation?.audioUrls?.title;
-                let descriptionAudio = existingTranslation?.audioUrls?.description;
-
-                try {
-                    if (language === 'english') {
-                        // Use provided title and description for English
-                        translatedTitle = title || existingTranslation?.title;
-                        translatedDescription = description || existingTranslation?.description;
-                    } else {
-                        // Update translations from request body or fallback to existing
-                        translatedTitle = translations?.[language]?.title || existingTranslation?.title;
-                        translatedDescription = translations?.[language]?.description || existingTranslation?.description;
-                    }
-
-                    // Convert text to speech
-                    if (translatedTitle) {
-                        titleAudio = await convertTextToSpeech(translatedTitle, language) || titleAudio;
-                    }
-                    if (translatedDescription) {
-                        descriptionAudio = await convertTextToSpeech(translatedDescription, language) || descriptionAudio;
-                    }
-                } catch (err) {
-                    console.error(`Error processing ${language} translation/audio:`, err);
-                }
-
-                return {
-                    language,
-                    title: translatedTitle,
-                    description: translatedDescription,
-                    audioUrls: { title: titleAudio, description: descriptionAudio },
-                };
-            })
-        );
-
-        // Update landing page fields
-        landingPage.title = title || landingPage.title;
-        landingPage.description = description || landingPage.description;
-        landingPage.displayImage = displayImage;
-        landingPage.islVideo = islVideoUrl;
-        landingPage.translations = updatedTranslations;
-
-        // Save updated landing page
-        await landingPage.save();
-
-        return res.status(200).json({ message: "Landing page updated successfully.", landingPage });
+        res.status(200).json({ message: "Landing updated successfully.", landing: updatedLanding });
     } catch (error) {
-        console.error("Error updating landing page:", error);
-        return res.status(500).json({ message: "Failed to update landing page.", error });
+        res.status(500).json({ message: error.message });
     }
 };
