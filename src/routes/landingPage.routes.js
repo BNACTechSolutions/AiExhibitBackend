@@ -22,7 +22,7 @@ const upload = multer({ storage }).fields([
 ]);
 
 // Route for setting up the landing page
-router.post('/setup', verifyToken, upload,activityLogger, setupLandingPage);
+router.post('/setup', verifyToken, upload, activityLogger, setupLandingPage);
 router.put('/edit', verifyToken, upload, activityLogger, editLandingPage);
 router.get("/:id", getLandingPage);
 

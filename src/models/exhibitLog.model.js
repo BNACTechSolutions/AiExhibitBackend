@@ -8,7 +8,7 @@ const exhibitLogSchema = new mongoose.Schema({
   userMobile: { type: String, required: true },
   deviceType: { type: String, required: true },
   ipAddress: { type: String, required: true },
-  advertisementId: { type: String, required: true },
+  advertisementId: { type: String, required: false },
   clientId: { type: mongoose.Schema.Types.ObjectId, ref: 'ClientMaster' }
 });
 

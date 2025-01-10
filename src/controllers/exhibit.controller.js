@@ -108,75 +108,77 @@ export const getExhibit = async (req, res) => {
     const userMobile = req.query.mobile || 'Unknown';
   
     try {
-      // 1. Verify the Client Code
-      const client = await clientMasterModel.findOne({ link:clientCode });
-      if (!client) {
-          return res.status(404).json({ message: 'Client not found.' });
-      }
+        console.log(clientCode, code);
 
-      // 2. Verify Client User is Active
-      const clientUser = await clientUserModel.findOne({ clientId: client._id });
-      if (!clientUser || clientUser.status === 0) {
-          return res.status(403).json({ message: 'Client is not active!' });
-      }
+        // 1. Verify the Client Code
+        const client = await clientMasterModel.findOne({ link: clientCode });
+        if (!client) {
+            return res.status(404).json({ message: 'Client not found.' });
+        }
 
-      // 3. Ensure the Exhibit Belongs to the Client
-      const exhibit = await Exhibit.findOne({ code, clientId: client._id });
-      if (!exhibit) {
-          return res.status(404).json({ message: 'Exhibit not found or does not belong to this client.' });
-      }
-  
-      // 3. Get the Landing Page associated with the client (URL)
-      const landingPage = await LandingPage.findOne({
-        clientId: client._id,
-        uniqueUrl: req.originalUrl,
-      });
-  
-      // 4. Get the Advertisement related to the Exhibit or Client
-      const advertisement = await advertisementModel.findById(client.advertisements[0]);
-  
-      // 5. Detect Device Type from User-Agent string
-      let deviceType = 'Desktop';  // Default
-      if (userAgent.includes('Mobile')) {
-        deviceType = 'Mobile';
-      } else if (userAgent.includes('Tablet')) {
-        deviceType = 'Tablet';
-      }
-  
-      // 6. Log the interaction
-      const logData = new ExhibitLog({
-        serialNumber: Date.now(),  // Generate unique serial number
-        clientName: client.name,
-        exhibitCode: code,
-        dateTime: new Date(),
-        userMobile: userMobile,  // User's mobile number
-        deviceType: deviceType,  // Device type
-        ipAddress: ip,  // User's IP address
-        advertisementId: advertisement ? advertisement.adName : null,  // Advertisement ID
-        clientId: client._id
-      });
-  
-      // Save the log entry
-      await logData.save();
+        // 2. Verify Client User is Active
+        const clientUser = await clientUserModel.findOne({ clientId: client._id });
+        if (!clientUser || clientUser.status === 0) {
+            return res.status(403).json({ message: 'Client is not active!' });
+        }
 
-      let advertisementImage = null;
-      if(advertisement.active){
-        advertisementImage = advertisement.adImage;
-      }
+        // 3. Ensure the Exhibit Belongs to the Client
+        const exhibit = await Exhibit.findOne({ code, clientId: client._id });
+        if (!exhibit) {
+            return res.status(404).json({ message: 'Exhibit not found or does not belong to this client.' });
+        }
   
-      // Return the exhibit details
-      res.status(200).json({
-        exhibit: {
-          ...exhibit.toObject(),
-          islVideo: exhibit.islVideo || null,
-        },
-        advertisementImage
-      });
+        // 4. Get the Landing Page associated with the client (URL)
+        const landingPage = await LandingPage.findOne({
+            clientId: client._id,
+            uniqueUrl: req.originalUrl,
+        });
+  
+        // 5. Get the Advertisement related to the Exhibit or Client
+        const advertisement = await advertisementModel.findById(client.advertisements[0]);
+  
+        // 6. Detect Device Type from User-Agent string
+        let deviceType = 'Desktop';  // Default
+        if (userAgent.includes('Mobile')) {
+            deviceType = 'Mobile';
+        } else if (userAgent.includes('Tablet')) {
+            deviceType = 'Tablet';
+        }
+  
+        // 7. Log the interaction
+        const logData = new ExhibitLog({
+            serialNumber: Date.now(),  // Generate unique serial number
+            clientName: client.name,
+            exhibitCode: code,
+            dateTime: new Date(),
+            userMobile: userMobile,  // User's mobile number
+            deviceType: deviceType,  // Device type
+            ipAddress: ip,  // User's IP address
+            advertisementId: advertisement ? advertisement._id : null,  // Ensure advertisementId is optional
+            clientId: client._id
+        });
+  
+        // Save the log entry
+        await logData.save();
+
+        let advertisementImage = null;
+        if (advertisement && advertisement.active) {
+            advertisementImage = advertisement.adImage;
+        }
+  
+        // Return the exhibit details
+        res.status(200).json({
+            exhibit: {
+                ...exhibit.toObject(),
+                islVideo: exhibit.islVideo || null,
+            },
+            advertisementImage
+        });
     } catch (error) {
-      console.error('Error fetching exhibit:', error);
-      res.status(500).json({ message: 'Error fetching exhibit' });
+        console.error('Error fetching exhibit:', error);
+        res.status(500).json({ message: 'Error fetching exhibit' });
     }
-};  
+}; 
 
 // Controller to delete an exhibit by code
 export const deleteExhibit = async (req, res) => {

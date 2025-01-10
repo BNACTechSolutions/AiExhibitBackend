@@ -14,8 +14,8 @@ export const setupLandingPage = async (req, res) => {
     try {
         const { title, description } = req.body;
         const clientId = req.user.clientId;
-        const displayImage = req.file ? req.file.path : null;
-        const islVideo = req.file ? req.file.path : null; // ISL video field (uploaded from the frontend)
+        const displayImage = req.files?.displayImage?.[0]?.path || null;
+        const islVideo = req.files?.islVideo?.[0]?.path || null;
 
         if (!clientId) {
             return res.status(400).json({ message: 'Client ID is required.' });
@@ -39,12 +39,14 @@ export const setupLandingPage = async (req, res) => {
 
         // Upload the ISL video to Cloudinary if provided (optional)
         let islVideoUrl = null;
-        if (req.file && req.file.fieldname === 'islVideo') {  // Check if ISL video is provided
+        if (req.files?.islVideo) {
+            const islVideo = req.files.islVideo[0].path; // Get the path of the ISL video
+            // Upload ISL video to Cloudinary if provided
             const videoUploadResult = await uploadOnCloudinary(islVideo);
             if (!videoUploadResult || !videoUploadResult.secure_url) {
                 return res.status(500).json({ message: 'ISL video upload failed.' });
             }
-            islVideoUrl = videoUploadResult.secure_url;  // URL for the ISL video
+            islVideoUrl = videoUploadResult.secure_url;
         }
 
         const qrURL = `${process.env.PROXY_URL}/${client.link}`;
