@@ -151,7 +151,7 @@ export const getLandingPage = async (req, res) => {
 
         // Prepare advertisement image if available
         let advertisementImage = null;
-        if(advertisement.active){
+        if (advertisement && advertisement.active) {
             advertisementImage = advertisement.adImage;
         }
 
@@ -172,7 +172,7 @@ export const getLandingPage = async (req, res) => {
             userMobile: userMobile,  // User's mobile number (from query params or fallback)
             deviceType: deviceType,  // Detected device type
             ipAddress: ip,  // User's IP address
-            advertisementId: advertisement ? advertisement.adName : null,  // Advertisement ID if available
+            advertisementId: advertisement ? advertisement._id : null,  // Advertisement ID if available, else null
             clientId: client._id,
         });
 
