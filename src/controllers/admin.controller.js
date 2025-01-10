@@ -56,6 +56,10 @@ export const loginAdminUser = async (req, res) => {
         const user = await AdminUser.findOne({ email });
         if (!user) return res.status(404).json({ message: "User not found" });
 
+        if(user.status === 0){
+            return res.status(400).send({ message: "Account is blocked!"})
+        }
+
         const isPasswordCorrect = await bcrypt.compare(password, user.password);
         if (!isPasswordCorrect) {
             return res.status(400).json({ message: "Invalid credentials" });

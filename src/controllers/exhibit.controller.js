@@ -1,6 +1,7 @@
 import Exhibit from "../models/exhibit.model.js";
 import ExhibitLog from '../models/exhibitLog.model.js';
 import clientMasterModel from '../models/clientMaster.model.js';
+import clientUserModel from "../models/clientUser.model.js";
 import advertisementModel from '../models/advertisment.model.js';
 import LandingPage from '../models/landingPage.model.js';
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
@@ -101,22 +102,28 @@ export const addExhibit = async (req, res) => {
 };
 
 export const getExhibit = async (req, res) => {
-    const { code } = req.params;
+    const { clientCode, code } = req.params;
     const userAgent = req.headers['user-agent'];
     const ip = req.ip;
     const userMobile = req.query.mobile || 'Unknown';
   
     try {
-      // 1. Get the Exhibit by Code
-      const exhibit = await Exhibit.findOne({ code });
-      if (!exhibit) {
-        return res.status(404).json({ message: 'Exhibit not found.' });
-      }
-  
-      // 2. Get the Client (owner of the landing page and exhibit)
-      const client = await clientMasterModel.findOne({ _id: exhibit.clientId });
+      // 1. Verify the Client Code
+      const client = await clientMasterModel.findOne({ link:clientCode });
       if (!client) {
-        return res.status(404).json({ message: 'Client not found.' });
+          return res.status(404).json({ message: 'Client not found.' });
+      }
+
+      // 2. Verify Client User is Active
+      const clientUser = await clientUserModel.findOne({ clientId: client._id });
+      if (!clientUser || clientUser.status === 0) {
+          return res.status(403).json({ message: 'Client is not active!' });
+      }
+
+      // 3. Ensure the Exhibit Belongs to the Client
+      const exhibit = await Exhibit.findOne({ code, clientId: client._id });
+      if (!exhibit) {
+          return res.status(404).json({ message: 'Exhibit not found or does not belong to this client.' });
       }
   
       // 3. Get the Landing Page associated with the client (URL)
@@ -333,7 +340,7 @@ export const editExhibit = async (req, res) => {
 
             updatedFields.translations = [
                 ...(updatedFields.translations || []),
-                ...autoTranslations.filter(t => t), // Remove null values
+                ...autoTranslations.filter(t => t),
             ];
         }
 

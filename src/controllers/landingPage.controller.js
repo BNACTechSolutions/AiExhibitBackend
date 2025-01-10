@@ -1,6 +1,7 @@
 // controllers/landingPage.controller.js
 import LandingPage from "../models/landingPage.model.js";
 import ClientLanguage from '../models/clientLanguage.model.js';
+import clientUserModel from "../models/clientUser.model.js";
 import ClientMaster from '../models/clientMaster.model.js';
 import Advertisement from "../models/advertisment.model.js";
 import ExhibitLog  from "../models/exhibitLog.model.js";
@@ -130,6 +131,11 @@ export const getLandingPage = async (req, res) => {
         const client = await ClientMaster.findOne({ link: id });
         if (!client) {
             return res.status(404).json({ message: 'Client not found with the provided link.' });
+        }
+
+        const clientUser = await clientUserModel.findOne({ clientId: client._id});
+        if(clientUser.status === 0){
+            return res.status(404).json({ message: 'Client is not active!' });
         }
 
         // Fetch the landing page data linked to the client using uniqueUrl

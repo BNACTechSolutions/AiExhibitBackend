@@ -24,7 +24,7 @@ const upload = multer({ storage }).fields([
 
 router.post('/add', upload, verifyToken,activityLogger, addExhibit);
 router.get("/all", verifyToken, getAllExhibits);
-router.get("/:code", getExhibit);
+router.get("/:clientCode/:code", getExhibit);
 
 // Route to delete an exhibit by code
 router.delete("/:code", verifyToken,activityLogger, deleteExhibit);

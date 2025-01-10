@@ -131,6 +131,10 @@ export const loginClient = async (req, res) => {
             return res.status(404).json({ message: "Client user not found." });
         }
 
+        if(user.status === 0){
+            return res.status(400).send({ message: "Your account is blocked!" });
+        }
+
         // Check if the user is active
         if (user.status !== 1) {
             return res.status(403).json({ message: "Account is inactive. Please contact support." });
@@ -340,5 +344,29 @@ export const getExhibitLogsForClient = async (req, res) => {
     } catch (error) {
         console.error('Error fetching exhibit logs for client:', error);
         res.status(500).json({ message: 'An error occurred while fetching the logs' });
+    }
+};
+
+export const editClientUser = async (req, res) => {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    try {
+        const updatedUser = await ClientUser.findByIdAndUpdate(
+            id,
+            { 
+                status, 
+                modifiedAt: Date.now() // Update the modifiedAt field explicitly
+            },
+            { new: true } // Return the updated document
+        );
+
+        if (!updatedUser) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        res.status(200).json({ message: "User updated successfully", updatedUser });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
     }
 };
