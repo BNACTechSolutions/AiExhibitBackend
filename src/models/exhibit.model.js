@@ -20,6 +20,7 @@ const exhibitSchema = new mongoose.Schema({
         },
     ],
     islVideo: { type: String, default: null },
+    status: { type: Number, required: true, default: 1 }
 });
 
 export default mongoose.model('Exhibit', exhibitSchema);

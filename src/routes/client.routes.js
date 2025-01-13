@@ -1,5 +1,5 @@
 import express from 'express';
-import { addClient, getVisitorData, loginClient, setupPassword, requestPasswordReset, verifyResetCodeAndUpdatePassword, getAllUsersForClient, getExhibitLogsForClient, editClientUser } from '../controllers/client.controller.js';
+import { addClient, getVisitorData, loginClient, setupPassword, requestPasswordReset, verifyResetCodeAndUpdatePassword, getAllUsersForClient, getExhibitLogsForClient, editClientUser, getClientDetails } from '../controllers/client.controller.js';
 import { verifyToken } from '../middlewares/auth.middleware.js';
 import { authMiddleware } from '../middlewares/auth.middleware.js';
 import activityLogger from '../middlewares/activityLog.middleware.js';
@@ -9,6 +9,7 @@ const router = express.Router();
 // Only allow Super Admins and Admins to add clients
 router.post('/add', authMiddleware([0, 1, 2]),activityLogger, addClient);
 router.put('/:id', authMiddleware([0,1]),activityLogger, editClientUser);
+router.get('/getclient/:clientId', authMiddleware([0]), getClientDetails);
 
 router.post('/login', loginClient);
 

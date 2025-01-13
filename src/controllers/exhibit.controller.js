@@ -20,6 +20,14 @@ export const addExhibit = async (req, res) => {
             return res.status(403).json({ message: "Unauthorized: Client ID is missing." });
         }
 
+        const master = await clientMasterModel.findById({ clientId });
+        if(master.activeDisplays >= master.maximumDisplays){
+            return res.status(403).json({ message: "Maximum displays already allocated." });
+        }
+        else{
+            master.activeDisplays = master.activeDisplays + 1;
+        }
+
         // Handle title image
         const titleImagePath = req.files?.titleImage ? req.files.titleImage[0].path : null;
         const images = req.files?.images ? req.files.images.map(file => file.path) : [];
@@ -108,8 +116,6 @@ export const getExhibit = async (req, res) => {
     const userMobile = req.query.mobile || 'Unknown';
   
     try {
-        console.log(clientCode, code);
-
         // 1. Verify the Client Code
         const client = await clientMasterModel.findOne({ link: clientCode });
         if (!client) {
@@ -208,7 +214,7 @@ export const editExhibit = async (req, res) => {
         }
 
         // Handle updates from the request body
-        const { title, description, translations } = req.body;
+        const { title, description, translations, status } = req.body;
         const updatedFields = {};
 
         // Handle title and description updates
@@ -248,6 +254,14 @@ export const editExhibit = async (req, res) => {
             }
 
             updatedFields.islVideo = islVideoResult.secure_url;
+        }
+
+        // Handle status (active/inactive)
+        if (status !== undefined) {
+            if (![0, 1].includes(Number(status))) {
+                return res.status(400).json({ message: "Invalid status value. Use 0 for inactive, 1 for active." });
+            }
+            updatedFields.status = Number(status);
         }
 
         // Parse translations JSON if provided in form-data

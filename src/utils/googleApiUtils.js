@@ -10,11 +10,17 @@ import { uploadOnCloudinary } from './cloudinary.js';
 // Ensure you have the correct API key in the .env file
 const GOOGLE_API_KEY = process.env.GOOGLE_TRANSLATE_API_KEY;  // Use your API key from environment variables
 
+const languageCodeMap = {
+    'punjabi': 'pa',
+    'marwadi': 'hi',  // Using Hindi code for Marwadi (as a fallback)
+    // Add any other languages as needed
+};
+
 // Translate text using Google Translate API
 const translateText = async (text, targetLanguage) => {
     try {
         // Get the ISO 639-1 code for the target language
-        const targetLanguageCode = ISO6391.getCode(targetLanguage.toLowerCase());
+        const targetLanguageCode = languageCodeMap[targetLanguage.toLowerCase()] || ISO6391.getCode(targetLanguage.toLowerCase());
 
         if (!targetLanguageCode) {
             throw new Error('Unsupported target language');
@@ -54,7 +60,7 @@ process.env.GOOGLE_APPLICATION_CREDENTIALS = './ai-exhibit-ed49a8ead891.json';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const convertTextToSpeech = async (text, targetLanguage) => {
-    const languageCode = ISO6391.getCode(targetLanguage.toLowerCase());
+    const languageCode = languageCodeMap[targetLanguage.toLowerCase()] || ISO6391.getCode(targetLanguage.toLowerCase());
 
     if (!languageCode) {
         throw new Error('Unsupported target language');

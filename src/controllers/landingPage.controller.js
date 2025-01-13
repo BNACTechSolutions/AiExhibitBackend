@@ -33,7 +33,7 @@ export const setupLandingPage = async (req, res) => {
         // Upload the display image to Cloudinary
         const uploadResult = await uploadOnCloudinary(displayImage);
         if (!uploadResult || !uploadResult.secure_url) {
-            return res.status(500).json({ message: 'Display image upload failed.'});
+            return res.status(500).json({ message: 'Display image upload failed.' });
         }
         const displayImageUrl = uploadResult.secure_url;
 
@@ -41,7 +41,6 @@ export const setupLandingPage = async (req, res) => {
         let islVideoUrl = null;
         if (req.files?.islVideo) {
             const islVideo = req.files.islVideo[0].path; // Get the path of the ISL video
-            // Upload ISL video to Cloudinary if provided
             const videoUploadResult = await uploadOnCloudinary(islVideo);
             if (!videoUploadResult || !videoUploadResult.secure_url) {
                 return res.status(500).json({ message: 'ISL video upload failed.' });
@@ -64,6 +63,8 @@ export const setupLandingPage = async (req, res) => {
             return res.status(404).json({ message: 'Languages for the client not found.' });
         }
 
+        const { audio } = client; // Fetch audio status from client
+
         for (const [language, isActive] of Object.entries(languages._doc)) {
             if (isActive === 1 && language !== 'clientId') {
                 let translatedTitle = title;
@@ -74,10 +75,14 @@ export const setupLandingPage = async (req, res) => {
                 try {
                     translatedTitle = await translateText(title, language) || title;
                     translatedDescription = await translateText(description, language) || description;
-                    titleAudioPath = await convertTextToSpeech(translatedTitle, language);
-                    descriptionAudioPath = await convertTextToSpeech(translatedDescription, language);
+
+                    // Generate audio only if audio is enabled
+                    if (audio) {
+                        titleAudioPath = await convertTextToSpeech(translatedTitle, language);
+                        descriptionAudioPath = await convertTextToSpeech(translatedDescription, language);
+                    }
                 } catch (error) {
-                    console.error(`Error generating translations for ${language}:`, error);
+                    console.error(`Error generating translations or audio for ${language}:`, error);
                 }
 
                 translations.push({
@@ -99,7 +104,7 @@ export const setupLandingPage = async (req, res) => {
             description,
             uniqueUrl: client.link,
             qrCode: qrCodeDataURL,
-            islVideo: islVideoUrl,  // Store the ISL video URL if it's available (optional)
+            islVideo: islVideoUrl, // Store the ISL video URL if it's available (optional)
             translations,
         });
 
@@ -226,8 +231,11 @@ export const editLandingPage = async (req, res) => {
             updatedFields.titleImage = uploadResult.secure_url;
         }
 
+        const client = ClientMaster.findById(clientId);
+        const {audio, isl} = client;
+
         // Handle ISL video update (optional)
-        if (req.files?.islVideo && req.files.islVideo.length > 0) {
+        if (req.files?.islVideo && req.files.islVideo.length > 0 && isl) {
             const islVideoPath = req.files.islVideo[0].path;
             const islVideoResult = await uploadOnCloudinary(islVideoPath);
 
@@ -257,11 +265,11 @@ export const editLandingPage = async (req, res) => {
                     const newTitle = title || existingTranslation.title;
                     const newDescription = description || existingTranslation.description;
 
-                    const titleAudio = title
+                    const titleAudio = (title && audio)
                         ? await convertTextToSpeech(title, language)
                         : existingTranslation.audioUrls?.title;
 
-                    const descriptionAudio = description
+                    const descriptionAudio = (description && audio)
                         ? await convertTextToSpeech(description, language)
                         : existingTranslation.audioUrls?.description;
 
@@ -296,7 +304,6 @@ export const editLandingPage = async (req, res) => {
 
             const autoTranslations = await Promise.all(
                 activeLanguages.map(async (lang) => {
-                    console.log(parsedTranslations);
                     if (parsedTranslations && parsedTranslations[lang]) {
                         return null; // Skip auto-translation for manually updated languages
                     }

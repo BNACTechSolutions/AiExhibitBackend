@@ -4,6 +4,8 @@ import ClientMaster from '../models/clientMaster.model.js';
 import ClientUser from '../models/clientUser.model.js';
 import ClientLanguage from '../models/clientLanguage.model.js';
 import visitorModel from '../models/visitor.model.js';
+import Exhibit from '../models/exhibit.model.js';
+import Landing from '../models/landingPage.model.js';
 import { sendSetupLinkEmail } from '../utils/emailService.js';
 import landingPageModel from '../models/landingPage.model.js';
 import ActivityLog from '../models/activityLog.model.js';
@@ -12,11 +14,11 @@ import exhibitLogModel from '../models/exhibitLog.model.js';
 import { ObjectId } from 'mongodb';
 import axios from "axios";
 import nodemailer from "nodemailer";
+import { convertTextToSpeech, translateText } from '../utils/googleApiUtils.js';
 
 export const addClient = async (req, res) => {
     const {
-        name, email, mobile, status, allottedUsers,
-        displayAllotted, textSize, validityDays, audio, isl, video,
+        name, email, mobile, status, maximumDisplays, textSize, validityDays, audio, isl,
         languages // Added languages selection
     } = req.body;
 
@@ -48,7 +50,7 @@ export const addClient = async (req, res) => {
             textSize,
             audio,
             isl,
-            video,
+            maximumDisplays,
             validityDate: new Date(Date.now() + validityDays * 24 * 60 * 60 * 1000),
             createdBy: req.userId,
             link: uniqueLink, // This will be updated with actual URL when landing page is set up
@@ -121,7 +123,6 @@ export const loginClient = async (req, res) => {
         );
         
         if (!recaptchaResponse.data.success || recaptchaResponse.data.score < 0.5) {
-            console.log(recaptchaResponse.data)
             return res.status(400).send({ message: "Failed reCAPTCHA verification" });
         }
 
@@ -348,25 +349,248 @@ export const getExhibitLogsForClient = async (req, res) => {
 };
 
 export const editClientUser = async (req, res) => {
-    const { id } = req.params;
-    const { status } = req.body;
+    const { id } = req.params; // ID of the user to be edited
+    const {
+        status,
+        name,
+        email,
+        mobile,
+        maximumDisplays,
+        audio,
+        isl,
+        languages,
+    } = req.body;
 
     try {
-        const updatedUser = await ClientUser.findByIdAndUpdate(
-            id,
-            { 
-                status, 
-                modifiedAt: Date.now() // Update the modifiedAt field explicitly
+        // Step 1: Update ClientUser details
+        const updatedUser = await ClientUser.findOneAndUpdate(
+            { clientId: id },
+            {
+                status,
+                email,
+                mobile,
+                modifiedAt: Date.now(),
             },
-            { new: true } // Return the updated document
+            { new: true }
         );
 
         if (!updatedUser) {
             return res.status(404).json({ message: "User not found" });
         }
 
-        res.status(200).json({ message: "User updated successfully", updatedUser });
+        const clientId = updatedUser.clientId;
+
+        // Step 2: Update ClientMaster details if associated
+        const updatedClient = await ClientMaster.findByIdAndUpdate(
+            clientId,
+            {
+                ...(name && { name }),
+                ...(maximumDisplays !== undefined && { maximumDisplays }),
+                ...(audio !== undefined && { audio }),
+                ...(isl !== undefined && { isl }),
+                modifiedAt: Date.now(),
+            },
+            { new: true }
+        );
+
+        // Step 3: Update ClientLanguage details
+        let updatedLanguages = null;
+        updatedLanguages = await ClientLanguage.findOneAndUpdate(
+            { clientId },
+            {
+                ...(Object.entries(languages || {}).reduce((acc, [key, value]) => {
+                    acc[key] = value; // Assign the value (0 or 1) for each language
+                    return acc;
+                }, {})),
+            },
+            { new: true }
+        );
+
+        // Step 4: Update Landing Page with title and description translations
+        const landingPage = await Landing.findOne({ clientId });
+        if (landingPage) {
+            const updatedTranslations = await Object.entries(languages || {}).reduce(async (accPromise, [lang, isActive]) => {
+                const acc = await accPromise;
+                if (isActive === 1) {
+                    // Look for existing translations for the given language
+                    const existingTranslation = landingPage.translations.find(t => t.language === lang);
+                    
+                    const translatedTitle = name
+                        ? (lang !== "english" ? await translateText(name, lang) : name)
+                        : existingTranslation?.title || ''; // If translation exists, use existing or empty string
+
+                    const translatedDescription = landingPage.description
+                        ? (lang !== "english" ? await translateText(landingPage.description, lang) : landingPage.description)
+                        : existingTranslation?.description || ''; // Same for description
+
+                    const titleAudio = audio && translatedTitle
+                        ? await convertTextToSpeech(translatedTitle, lang)
+                        : existingTranslation?.audioUrls?.title || ''; // Use existing audio URL or generate new one
+
+                    const descriptionAudio = audio && translatedDescription
+                        ? await convertTextToSpeech(translatedDescription, lang)
+                        : existingTranslation?.audioUrls?.description || ''; // Use existing audio URL or generate new one
+
+                    // Add the translation for the current language
+                    acc[lang] = {
+                        language: lang, // Ensure we preserve the language
+                        title: translatedTitle,
+                        description: translatedDescription,
+                        audioUrls: {
+                            title: titleAudio,
+                            description: descriptionAudio,
+                        },
+                    };
+                }
+                return acc;
+            }, Promise.resolve({}));
+
+            // Merge existing translations with new ones
+            const newTranslations = landingPage.translations.reduce((acc, translation) => {
+                acc[translation.language] = translation;  // Add existing translations to the accumulator
+                return acc;
+            }, {});
+
+            // Merge the new translations (with updated data) with the old ones
+            const mergedTranslations = { ...newTranslations, ...updatedTranslations };
+
+            await Landing.findByIdAndUpdate(landingPage._id, {
+                ...(name && { name }),
+                ...(languages && { translations: Object.values(mergedTranslations) }), // Update with merged translations
+                modifiedAt: Date.now(),
+            });
+        }
+
+
+
+        // Step 5: Update Exhibits with title and description translations
+        const exhibits = await Exhibit.find({ clientId });
+        if (exhibits.length > 0) {
+            await Promise.all(
+                exhibits.map(async (exhibit) => {
+                    const exhibitTranslations = await Object.entries(languages || {}).reduce(async (accPromise, [lang, isActive]) => {
+                        const acc = await accPromise;
+                        if (isActive === 1) {
+                            // Look for existing translations for the given language
+                            const existingTranslation = exhibit.translations.find(t => t.language === lang);
+
+                            const translatedTitle = exhibit.title
+                                ? (lang !== "english" ? await translateText(exhibit.title, lang) : exhibit.title)
+                                : existingTranslation?.title || ''; // If translation exists, use existing or empty string
+
+                            const translatedDescription = exhibit.description
+                                ? (lang !== "english" ? await translateText(exhibit.description, lang) : exhibit.description)
+                                : existingTranslation?.description || ''; // Same for description
+
+                            const titleAudio = audio && translatedTitle
+                                ? await convertTextToSpeech(translatedTitle, lang)
+                                : existingTranslation?.audioUrls?.title || ''; // Use existing audio URL or generate new one
+
+                            const descriptionAudio = audio && translatedDescription
+                                ? await convertTextToSpeech(translatedDescription, lang)
+                                : existingTranslation?.audioUrls?.description || ''; // Use existing audio URL or generate new one
+
+                            // Add the translation for the current language
+                            acc.push({
+                                language: lang, // Ensure we preserve the language
+                                title: translatedTitle,
+                                description: translatedDescription,
+                                audioUrls: {
+                                    title: titleAudio,
+                                    description: descriptionAudio,
+                                },
+                            });
+                        }
+                        return acc;
+                    }, Promise.resolve([]));
+
+                    // Merge existing translations with new ones
+                    const newTranslations = exhibit.translations.reduce((acc, translation) => {
+                        acc[translation.language] = translation;  // Add existing translations to the accumulator
+                        return acc;
+                    }, {});
+
+                    // Merge the new translations (with updated data) with the old ones
+                    const mergedTranslations = [...Object.values(newTranslations), ...exhibitTranslations];
+
+                    await Exhibit.findByIdAndUpdate(exhibit._id, {
+                        ...(isl !== undefined && { isl }),
+                        ...(audio !== undefined && { audio }),
+                        translations: mergedTranslations, // Update with merged translations
+                        modifiedAt: Date.now(),
+                    });
+                })
+            );
+        }
+
+
+
+        res.status(200).json({
+            message: "User updated successfully, including landing pages and exhibits.",
+            updatedUser,
+            updatedClient,
+            updatedLanguages,
+        });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
+};
+
+export const getClientDetails = async (req, res) => {
+  try {
+    const { clientId } = req.params;
+
+    const client = await ClientMaster.findById(clientId);
+    const user = await ClientUser.findOne({ clientId });
+    const langs = await ClientLanguage.findOne({ clientId });
+
+    if (!client || !user || !langs) {
+      return res.status(404).json({ message: 'Client or associated data not found' });
+    }
+
+    // Map the language data to return the languages with a value of 1 (enabled)
+    const languages = {
+      english: langs.english,
+      hindi: langs.hindi,
+      odia: langs.odia,
+      bengali: langs.bengali,
+      telugu: langs.telugu,
+      tamil: langs.tamil,
+      malayalam: langs.malayalam,
+      kannada: langs.kannada,
+      marathi: langs.marathi,
+      gujarati: langs.gujarati,
+      marwadi: langs.marwadi,
+      punjabi: langs.punjabi,
+      assamese: langs.assamese,
+      urdu: langs.urdu,
+      sanskrit: langs.sanskrit,
+      spanish: langs.spanish,
+      french: langs.french,
+      german: langs.german,
+      mandarin: langs.mandarin,
+      japanese: langs.japanese,
+      arabic: langs.arabic,
+      russian: langs.russian,
+      portuguese: langs.portuguese,
+      italian: langs.italian,
+      korean: langs.korean,
+      thai: langs.thai,
+    };
+
+    // Send the filtered client details and languages as a response
+    res.status(200).json({
+      status: client.status,
+      name: client.name,
+      email: user.email,
+      mobile: user.mobile,
+      maximumDisplays: client.maximumDisplays,
+      audio: client.audio,
+      isl: client.isl,
+      languages: languages, // Send the language data
+    });
+  } catch (error) {
+    console.error('Error fetching client details:', error);
+    res.status(500).json({ message: 'Server error' });
+  }
 };

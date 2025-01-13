@@ -13,8 +13,21 @@ const clientLanguageSchema = new mongoose.Schema({
     marathi: { type: Number, default: 0 },
     gujarati: { type: Number, default: 0 },
     marwadi: { type: Number, default: 0 },
-    l1: { type: Number, default: 0 },
-    l2: { type: Number, default: 0 }
+    punjabi: { type: Number, default: 0 },
+    assamese: { type: Number, default: 0 },
+    urdu: { type: Number, default: 0 },
+    sanskrit: { type: Number, default: 0 },
+    spanish: { type: Number, default: 0 },
+    french: { type: Number, default: 0 },
+    german: { type: Number, default: 0 },
+    mandarin: { type: Number, default: 0 },
+    japanese: { type: Number, default: 0 },
+    arabic: { type: Number, default: 0 },
+    russian: { type: Number, default: 0 },
+    portuguese: { type: Number, default: 0 },
+    italian: { type: Number, default: 0 },
+    korean: { type: Number, default: 0 },
+    thai: { type: Number, default: 0 }
 });
 
 export default mongoose.model('ClientLanguage', clientLanguageSchema);

@@ -211,8 +211,6 @@ export const editAdvertisement = async (req, res) => {
     const { id } = req.params;
     const { adName, advertiserId } = req.body;
 
-    console.log(adName, advertiserId)
-
     let adImage;
 
     // If a new image is uploaded, update it on Cloudinary

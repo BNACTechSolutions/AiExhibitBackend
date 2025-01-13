@@ -49,7 +49,6 @@ export const loginAdminUser = async (req, res) => {
         );
         
         if (!recaptchaResponse.data.success || recaptchaResponse.data.score < 0.5) {
-            console.log(recaptchaResponse.data)
             return res.status(400).send({ message: "Failed reCAPTCHA verification" });
         }
 
@@ -171,10 +170,10 @@ export const setupPassword = async (req, res) => {
 
 export const editAdminUser = async (req, res) => {
     const { id } = req.params;
-    const { status } = req.body;
+    const { name, email, mobile, status } = req.body;
 
     try {
-        const updatedUser = await AdminUser.findByIdAndUpdate(id, { status }, { new: true });
+        const updatedUser = await AdminUser.findByIdAndUpdate(id, { status, email, name, mobile }, { new: true });
         if (!updatedUser) return res.status(404).json({ message: "User not found" });
 
         res.status(200).json({ message: "User updated successfully", updatedUser });
