@@ -20,7 +20,7 @@ export const addExhibit = async (req, res) => {
             return res.status(403).json({ message: "Unauthorized: Client ID is missing." });
         }
 
-        const master = await clientMasterModel.findById({ clientId });
+        const master = await clientMasterModel.findById(clientId);
         if(master.activeDisplays >= master.maximumDisplays){
             return res.status(403).json({ message: "Maximum displays already allocated." });
         }

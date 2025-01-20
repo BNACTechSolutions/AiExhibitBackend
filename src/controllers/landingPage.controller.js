@@ -220,15 +220,15 @@ export const editLandingPage = async (req, res) => {
         if (description) updatedFields.description = description;
 
         // Handle title image update
-        if (req.files?.titleImage && req.files.titleImage.length > 0) {
-            const titleImagePath = req.files.titleImage[0].path;
+        if (req.files?.displayImage && req.files.displayImage.length > 0) {
+            const titleImagePath = req.files.displayImage[0].path;
             const uploadResult = await uploadOnCloudinary(titleImagePath);
 
             if (!uploadResult) {
                 return res.status(500).json({ message: "Title image upload failed." });
             }
 
-            updatedFields.titleImage = uploadResult.secure_url;
+            updatedFields.displayImage = uploadResult.secure_url;
         }
 
         const client = ClientMaster.findById(clientId);
