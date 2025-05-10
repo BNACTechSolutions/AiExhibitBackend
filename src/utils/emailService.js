@@ -7,7 +7,7 @@ export const sendSetupLinkEmail = async (to, setupLink) => {
         service: 'gmail',
         auth: {
             user: "noreplybnac@gmail.com",
-            pass: "wiia pehe yngw fvzr"
+            pass: "pmlx xedc rype slvp"
         }
     });
 
@@ -19,17 +19,15 @@ export const sendSetupLinkEmail = async (to, setupLink) => {
         html: `<p>Welcome! Please set up your password using the following link: <a href="${setupLink}">${setupLink}</a></p>`
     };
 
-    try {
+    return new Promise((resolve, reject) => {
         transporter.sendMail(mailOptions, (error, info) => {
             if (error) {
                 console.error("Error while sending email:", error);
-                return res.status(500).json({ message: "Failed to send setup link email" });
+                reject(error);
             } else {
                 console.log("Email sent successfully:", info.response);
-                return res.status(201).json({ message: "Admin added successfully and email sent." });
+                resolve(info);
             }
-        });        
-    } catch (error) {
-        throw new Error("Failed to send setup link email");
-    }
+        });
+    });
 };
