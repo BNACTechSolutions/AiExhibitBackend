@@ -19,7 +19,10 @@ const languageCodeMap = {
 // Translate text using Google Translate API
 const translateText = async (text, targetLanguage) => {
     try {
-        // Get the ISO 639-1 code for the target language
+        if(targetLanguage === 'odia'){
+            targetLanguage = 'oriya'
+        }
+        
         const targetLanguageCode = languageCodeMap[targetLanguage.toLowerCase()] || ISO6391.getCode(targetLanguage.toLowerCase());
 
         if (!targetLanguageCode) {
@@ -60,6 +63,10 @@ process.env.GOOGLE_APPLICATION_CREDENTIALS = './ai-exhibit-ed49a8ead891.json';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const convertTextToSpeech = async (text, targetLanguage) => {
+    if(targetLanguage === 'odia'){
+        targetLanguage = 'oriya'
+    }
+
     const languageCode = languageCodeMap[targetLanguage.toLowerCase()] || ISO6391.getCode(targetLanguage.toLowerCase());
 
     if (!languageCode) {
