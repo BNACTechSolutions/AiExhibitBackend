@@ -164,19 +164,25 @@ export const getExhibit = async (req, res) => {
             clientId: client._id
         });
   
-        // Save the log entry
         await logData.save();
 
         let advertisementImage = null;
         if (advertisement && advertisement.active) {
             advertisementImage = advertisement.adImage;
         }
+
+        const processedTranslations = exhibit.translations.map(translation => ({
+            language: translation.language,
+            title: translation.title,
+            description: translation.description,
+            ...(client.audio === 1 && { audioUrls: translation.audioUrls })
+        }));
   
-        // Return the exhibit details
         res.status(200).json({
             exhibit: {
                 ...exhibit.toObject(),
-                islVideo: exhibit.islVideo || null,
+                translations: processedTranslations,
+                ...(client.isl === 1 && { islVideo: exhibit.islVideo || null }),
             },
             advertisementImage
         });
@@ -186,7 +192,6 @@ export const getExhibit = async (req, res) => {
     }
 }; 
 
-// Controller to delete an exhibit by code
 export const deleteExhibit = async (req, res) => {
     const { code } = req.params;
 
@@ -233,7 +238,6 @@ export const editExhibit = async (req, res) => {
             updatedFields.titleImage = uploadResult.secure_url;
         }
 
-        // Handle multiple images update
         if (req.files?.images && req.files.images.length > 0) {
             const images = req.files.images.map(file => file.path);
             const cloudinaryImages = await Promise.all(
@@ -244,7 +248,6 @@ export const editExhibit = async (req, res) => {
             updatedFields.images = imageUrls;
         }
 
-        // Handle ISL video update (optional)
         if (req.files?.islVideo && req.files.islVideo.length > 0) {
             const islVideoPath = req.files.islVideo[0].path;
             const islVideoResult = await uploadOnCloudinary(islVideoPath);
@@ -256,7 +259,6 @@ export const editExhibit = async (req, res) => {
             updatedFields.islVideo = islVideoResult.secure_url;
         }
 
-        // Handle status (active/inactive)
         if (status !== undefined) {
             if (![0, 1].includes(Number(status))) {
                 return res.status(400).json({ message: "Invalid status value. Use 0 for inactive, 1 for active." });

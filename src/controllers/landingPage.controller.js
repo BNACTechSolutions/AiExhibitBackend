@@ -168,16 +168,15 @@ export const getLandingPage = async (req, res) => {
             deviceType = 'Tablet';
         }
 
-        // Log the interaction with the landing page
         const logData = new ExhibitLog({
-            serialNumber: Date.now(),  // Generate unique serial number
+            serialNumber: Date.now(),
             clientName: client.name,
-            exhibitCode: id,  // Using the unique URL as the equivalent of exhibit code
+            exhibitCode: id,  
             dateTime: new Date(),
-            userMobile: userMobile,  // User's mobile number (from query params or fallback)
-            deviceType: deviceType,  // Detected device type
-            ipAddress: ip,  // User's IP address
-            advertisementId: advertisement ? advertisement._id : null,  // Advertisement ID if available, else null
+            userMobile: userMobile,  
+            deviceType: deviceType,  
+            ipAddress: ip, 
+            advertisementId: advertisement ? advertisement._id : null,
             clientId: client._id,
         });
 
@@ -186,14 +185,20 @@ export const getLandingPage = async (req, res) => {
             console.error('Failed to save log entry:', logError);
         });
 
-        // Return the landing page details along with the advertisement image if it exists
+        const processedTranslations = landingPage.translations.map(translation => ({
+            language: translation.language,
+            title: translation.title,
+            description: translation.description,
+            audioUrls: client.audio === 1 ? translation.audioUrls : undefined
+        }));
+
         res.status(200).json({
             title: landingPage.title,
             description: landingPage.description,
-            displayImage: landingPage.displayImage,  // Client's landing page display image
-            translations: landingPage.translations,
-            advertisementImage,  // Add the advertisement image if available
-            islVideo: landingPage.islVideo,  // Include ISL video URL if available
+            displayImage: landingPage.displayImage,
+            translations: processedTranslations,
+            advertisementImage,
+            ...(client.isl === 1 && { islVideo: landingPage.islVideo }), // Include ISL video only if enabled
         });
     } catch (error) {
         console.error('Error fetching landing page:', error);
