@@ -13,26 +13,21 @@ const GOOGLE_API_KEY = process.env.GOOGLE_TRANSLATE_API_KEY;  // Use your API ke
 const languageCodeMap = {
     'punjabi': 'pa',
     'marwadi': 'hi',  // Using Hindi code for Marwadi (as a fallback)
-    // Add any other languages as needed
+    'odia': 'or',
+    'bengali': 'bn',
 };
 
 // Translate text using Google Translate API
 const translateText = async (text, targetLanguage) => {
-    try {
-        if(targetLanguage === 'odia'){
-            targetLanguage = 'oriya'
-        }
-        
+    try {    
         const targetLanguageCode = languageCodeMap[targetLanguage.toLowerCase()] || ISO6391.getCode(targetLanguage.toLowerCase());
 
         if (!targetLanguageCode) {
             throw new Error('Unsupported target language');
         }
 
-        // Endpoint for Google Translate API
         const endpoint = 'https://translation.googleapis.com/language/translate/v2';
 
-        // Set up the parameters for the request
         const params = new URLSearchParams();
         params.append('q', text);  // The text to be translated
         params.append('target', targetLanguageCode);  // Target language code
@@ -63,10 +58,6 @@ process.env.GOOGLE_APPLICATION_CREDENTIALS = './ai-exhibit-ed49a8ead891.json';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const convertTextToSpeech = async (text, targetLanguage) => {
-    if(targetLanguage === 'odia'){
-        targetLanguage = 'oriya'
-    }
-
     const languageCode = languageCodeMap[targetLanguage.toLowerCase()] || ISO6391.getCode(targetLanguage.toLowerCase());
 
     if (!languageCode) {
