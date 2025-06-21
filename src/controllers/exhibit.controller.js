@@ -118,6 +118,7 @@ export const addExhibit = async (req, res) => {
             clientId,
             translations,
             islVideo: islVideoUrl,
+            // status omitted here as it is default set to 2
         });
 
         await exhibit.save();
@@ -151,6 +152,10 @@ export const getExhibit = async (req, res) => {
         if (!exhibit) {
             return res.status(404).json({ message: 'Exhibit not found or does not belong to this client.' });
         }
+        if(exhibit.status == 2)
+        {
+            return res.status(403).json({ message: 'This Exhibit is pending approval' });
+        } // Pending exhibits are not shown.
   
         // 4. Get the Landing Page associated with the client (URL)
         const landingPage = await LandingPage.findOne({
@@ -226,6 +231,23 @@ export const deleteExhibit = async (req, res) => {
     }
 };
 
+// Admin endpoint to approve an exhibit
+export const approveExhibit = async (req, res) => {
+    const { code } = req.params;
+    try {
+        const exhibit = await Exhibit.findOne({ code });
+        if (!exhibit) {
+            return res.status(404).json({ message: "Exhibit not found." });
+        }
+        exhibit.status = 1; // Set to active from pending
+        await exhibit.save();
+        res.status(200).json({ message: "Exhibit approved and set to active.", exhibit });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+};
+// Changes end here
+
 export const editExhibit = async (req, res) => {
     const { code } = req.params;
 
@@ -278,8 +300,11 @@ export const editExhibit = async (req, res) => {
         }
 
         if (status !== undefined) {
-            if (![0, 1].includes(Number(status))) {
-                return res.status(400).json({ message: "Invalid status value. Use 0 for inactive, 1 for active." });
+         //   if (![0, 1].includes(Number(status))) {
+         //       return res.status(400).json({ message: "Invalid status value. Use 0 for inactive, 1 for active." });
+         //   }
+            if (![0, 1, 2].includes(Number(status))) {
+                return res.status(400).json({ message: "Invalid status value. Use 0 for inactive, 1 for active, 2 for pending." });
             }
             updatedFields.status = Number(status);
         }
