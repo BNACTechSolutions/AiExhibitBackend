@@ -149,7 +149,7 @@ export const getExhibit = async (req, res) => {
 
         // 3. Ensure the Exhibit Belongs to the Client
         const exhibit = await Exhibit.findOne({ code, clientId: client._id });
-        if (!exhibit) {
+        if (!exhibit || exhibit.status == 0) {
             return res.status(404).json({ message: 'Exhibit not found or does not belong to this client.' });
         }
         if(exhibit.status == 2)
