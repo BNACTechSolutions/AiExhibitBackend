@@ -14,8 +14,10 @@ export const addExhibit = async (req, res) => {
     const { title, description } = req.body;
     const { clientId } = req.user;
     const islVideo = req.file ? req.file.path : null;
+    console.log("Received request to add exhibit with title:", title, "and description:", description);
 
     try {
+        console.log("Adding exhibit with clientId:", clientId);
         if (!clientId) {
             return res.status(403).json({ message: "Unauthorized: Client ID is missing." });
         }
@@ -69,20 +71,36 @@ export const addExhibit = async (req, res) => {
 
         const translations = await Promise.all(
             activeLanguages.map(async (lang) => {
-                const translatedTitle = lang !== "english" ? await translateText(title, lang) : title;
-                const translatedDescription = lang !== "english" ? await translateText(description, lang) : description;
-        
-                const titleAudio = translatedTitle
-                    ? await convertTextToSpeech(translatedTitle, lang)
-                    : null;
-                const descriptionAudio = translatedDescription
-                    ? await convertTextToSpeech(translatedDescription, lang)
-                    : null;
-        
+                let translatedTitle = title;
+                let translatedDescription = description;
+                let titleAudio = null;
+                let descriptionAudio = null;
+
+                try {
+                    if (lang !== "english") {
+                        const tempTitle = await translateText(title, lang);
+                        const tempDescription = await translateText(description, lang);
+
+                        if (tempTitle && tempTitle.trim()) translatedTitle = tempTitle;
+                        if (tempDescription && tempDescription.trim()) translatedDescription = tempDescription;
+                    }
+
+                    titleAudio = translatedTitle
+                        ? await convertTextToSpeech(translatedTitle, lang)
+                        : null;
+
+                    descriptionAudio = translatedDescription
+                        ? await convertTextToSpeech(translatedDescription, lang)
+                        : null;
+
+                } catch (err) {
+                    console.error(`Error processing language: ${lang}`, err);
+                }
+
                 return {
                     language: lang,
-                    title: translatedTitle || title,
-                    description: translatedDescription || description,
+                    title: translatedTitle,
+                    description: translatedDescription,
                     audioUrls: {
                         title: titleAudio,
                         description: descriptionAudio,
