@@ -1,7 +1,8 @@
 // routes/exhibit.routes.js
 import express from "express";
 import multer from "multer";
-import { addExhibit, getExhibit, deleteExhibit, editExhibit, getAllExhibits } from "../controllers/exhibit.controller.js";
+import { addExhibit, getExhibit, deleteExhibit, editExhibit, approveExhibit, getAllExhibits } from "../controllers/exhibit.controller.js";
+// Imported new approveExhibit function
 import {verifyToken} from "../middlewares/auth.middleware.js";
 import activityLogger from "../middlewares/activityLog.middleware.js";
 
@@ -29,6 +30,8 @@ router.get("/all", verifyToken, getAllExhibits);
 router.delete("/:code", verifyToken,activityLogger, deleteExhibit);
 router.put("/:code", verifyToken, upload,activityLogger, editExhibit);
 router.get("/:clientCode/:code", getExhibit);
+// Route to approve the exhibit
+router.put('/approve/:code', verifyToken, activityLogger, approveExhibit);
 
 
 export default router;
