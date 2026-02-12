@@ -6,6 +6,7 @@ const exhibitSchema = new mongoose.Schema({
     titleImage: { type: String, required: true },  // URL of the title image
     images: [{ type: String }],  // Array to store URLs of multiple images
     code: { type: String, required: true, unique: true },
+    qrCode: { type: String, default: null },
     createdAt: { type: Date, default: Date.now },
     clientId: {type: mongoose.Schema.Types.ObjectId, ref: "clientUser", required: true},
     translations: [

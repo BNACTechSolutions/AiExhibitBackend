@@ -7,6 +7,7 @@ import LandingPage from '../models/landingPage.model.js';
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import ClientLanguage from "../models/clientLanguage.model.js";
 import { convertTextToSpeech, translateText } from "../utils/googleApiUtils.js";
+import { generateQRCode } from "../utils/generateQRCode.js";
 
 const generateCode = () => Math.random().toString(36).substr(2, 6).toUpperCase();
 
@@ -109,11 +110,20 @@ export const addExhibit = async (req, res) => {
             })
         );
 
+        const exhibitCode = generateCode();
+        const pwaBaseUrl = process.env.PWA_URL || "";
+        const normalizedPwaUrl = pwaBaseUrl ? pwaBaseUrl.replace(/\/$/, "") : "";
+        const qrData = normalizedPwaUrl
+            ? `${normalizedPwaUrl}/${master.link}/exhibit/${exhibitCode}`
+            : `${master.link}/exhibit/${exhibitCode}`;
+        const qrCode = await generateQRCode(qrData);
+
         const exhibit = new Exhibit({
             titleImage: titleImageUrl,
             title,
             description,
-            code: generateCode(),
+            code: exhibitCode,
+            qrCode,
             images: imageUrls,
             clientId,
             translations,
@@ -394,20 +404,24 @@ export const editExhibit = async (req, res) => {
 };
 
 export const getAllExhibits = async (req, res) => {
-    const { clientId } = req.user;
-
+    const { clientId } = req.user || {};
     try {
-        if (!clientId) {
-            return res.status(403).json({ message: "Unauthorized: Client ID is missing." });
+        let exhibits;
+        if (clientId) {
+            exhibits = await Exhibit.find({ clientId });
+        } else {
+            exhibits = await Exhibit.find({});
         }
-        
-        const exhibits = await Exhibit.find({ clientId });
-
-        if (exhibits.length === 0) {
+        if (!exhibits || exhibits.length === 0) {
             return res.status(404).json({ message: "No exhibits found." });
         }
-
-        res.status(200).json({ exhibits });
+        // Only send required fields for table
+        const result = exhibits.map(e => ({
+            title: e.title,
+            code: e.code,
+            qrCode: e.qrCode || null
+        }));
+        res.status(200).json({ exhibits: result });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
