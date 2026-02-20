@@ -21,7 +21,7 @@ const exhibitSchema = new mongoose.Schema({
         },
     ],
     islVideo: { type: String, default: null },
-    status: { type: Number, required: true, default: 1 }
+    status: { type: Number, required: true, default: 2 } // 0: inactive, 1: active, 2: (default) pending
 });
 
 export default mongoose.model('Exhibit', exhibitSchema);
